@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@circle-fin/x402-batching": "^2.1.0"
+  }
+}
