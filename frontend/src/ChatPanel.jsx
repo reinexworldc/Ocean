@@ -1,6 +1,6 @@
 import './ChatPanel.css';
 
-function ChatPanel({ arrowDownIcon, title }) {
+function ChatPanel({ title }) {
   return (
     <div className="chat-panel">
       <main className="main-content">
