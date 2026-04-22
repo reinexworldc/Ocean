@@ -12,7 +12,8 @@ import { PrismaService } from "../../prisma/prisma.service.js";
 import { type CreateChatDto } from "./dto/create-chat.dto.js";
 import { type CreateChatMessageDto } from "./dto/create-chat-message.dto.js";
 import { type UpdateChatDto } from "./dto/update-chat.dto.js";
-import { GeminiService, type GeminiChatMessage } from "./gemini.service.js";
+import { ChatAgentService } from "./chat-agent.service.js";
+import { type GeminiChatMessage } from "./gemini.service.js";
 
 const DEFAULT_CHAT_TITLE = "New chat";
 const FAILED_ASSISTANT_MESSAGE = "I couldn't generate a response right now. Please try again.";
@@ -32,7 +33,7 @@ export class ChatsService {
 
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
-    @Inject(GeminiService) private readonly geminiService: GeminiService,
+    @Inject(ChatAgentService) private readonly chatAgentService: ChatAgentService,
   ) {}
 
   async listChats(userId: string) {
@@ -119,6 +120,14 @@ export class ChatsService {
 
   async createChatMessage(userId: string, chatId: string, dto: CreateChatMessageDto) {
     const chat = await this.ensureOwnedChat(userId, chatId);
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        circleWalletAddress: true,
+      },
+    });
     const content = this.normalizeMessageContent(dto.content);
     const shouldRetitle = await this.shouldRefreshTitle(chat);
     const nextTitle = shouldRetitle ? this.deriveTitleFromMessage(content) : null;
@@ -145,11 +154,18 @@ export class ChatsService {
 
     let generationFailed = false;
     let assistantMessage: Message;
+    let agentActions: Array<Record<string, unknown>> = [];
 
     try {
-      const assistantContent = await this.geminiService.generateReply(
-        this.toGeminiHistory(history),
-      );
+      const agentResult = await this.chatAgentService.generateReply({
+        userId,
+        chatId,
+        history: this.toGeminiHistory(history),
+        latestUserMessage: content,
+        circleWalletAddress: user?.circleWalletAddress ?? null,
+      });
+      const assistantContent = agentResult.content;
+      agentActions = agentResult.executedActions;
 
       assistantMessage = await this.prisma.message.create({
         data: {
@@ -184,6 +200,7 @@ export class ChatsService {
       userMessage: this.toMessageDto(userMessage),
       assistantMessage: this.toMessageDto(assistantMessage),
       generationFailed,
+      agentActions,
     };
   }
 
