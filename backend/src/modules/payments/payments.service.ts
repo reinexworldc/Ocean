@@ -219,14 +219,15 @@ export class PaymentsService {
       {
         address: circleWalletAddress as `0x${string}`,
         signTypedData: async ({ domain, types, primaryType, message }) => {
+          const circleTypedData = this.toCircleTypedData({
+            domain,
+            types,
+            primaryType,
+            message,
+          });
           const response = await circleClient.signTypedData({
             walletId: circleWalletId,
-            data: this.toJsonString({
-              domain,
-              types,
-              primaryType,
-              message,
-            }),
+            data: this.toJsonString(circleTypedData),
             memo: "Ocean x402 premium API payment",
           });
           const signature = response.data?.signature;
@@ -283,5 +284,114 @@ export class PaymentsService {
     return JSON.stringify(value, (_key, currentValue) =>
       typeof currentValue === "bigint" ? currentValue.toString() : currentValue,
     );
+  }
+
+  private toCircleTypedData(input: {
+    domain: Record<string, unknown>;
+    types: Record<string, unknown>;
+    primaryType: string;
+    message: Record<string, unknown>;
+  }) {
+    const normalizedTypes = this.normalizeTypedDataTypes(input.types);
+    const messageFields = normalizedTypes[input.primaryType] ?? [];
+
+    return {
+      types: {
+        ...normalizedTypes,
+        EIP712Domain: this.buildEip712DomainTypes(input.domain),
+      },
+      domain: this.normalizeTypedDataValue(input.domain),
+      primaryType: input.primaryType,
+      message: this.pickTypedDataFields(input.message, messageFields),
+    };
+  }
+
+  private normalizeTypedDataTypes(types: Record<string, unknown>) {
+    return Object.fromEntries(
+      Object.entries(types).flatMap(([typeName, fields]) => {
+        if (!Array.isArray(fields)) {
+          return [];
+        }
+
+        return [
+          [
+            typeName,
+            fields.flatMap((field) => {
+              if (!field || typeof field !== "object" || Array.isArray(field)) {
+                return [];
+              }
+
+              const typedField = field as Record<string, unknown>;
+              const name = typeof typedField.name === "string" ? typedField.name : null;
+              const type = typeof typedField.type === "string" ? typedField.type : null;
+
+              if (!name || !type) {
+                return [];
+              }
+
+              return [{ name, type }];
+            }),
+          ],
+        ];
+      }),
+    ) as Record<string, Array<{ name: string; type: string }>>;
+  }
+
+  private buildEip712DomainTypes(domain: Record<string, unknown>) {
+    const entries: Array<{ name: string; type: string }> = [];
+
+    if (domain.name !== undefined) {
+      entries.push({ name: "name", type: "string" });
+    }
+
+    if (domain.version !== undefined) {
+      entries.push({ name: "version", type: "string" });
+    }
+
+    if (domain.chainId !== undefined) {
+      entries.push({ name: "chainId", type: "uint256" });
+    }
+
+    if (domain.verifyingContract !== undefined) {
+      entries.push({ name: "verifyingContract", type: "address" });
+    }
+
+    if (domain.salt !== undefined) {
+      entries.push({ name: "salt", type: "bytes32" });
+    }
+
+    return entries;
+  }
+
+  private pickTypedDataFields(
+    value: Record<string, unknown>,
+    fields: Array<{ name: string; type: string }>,
+  ): Record<string, unknown> {
+    return Object.fromEntries(
+      fields
+        .filter((field) => value[field.name] !== undefined)
+        .map((field) => [field.name, this.normalizeTypedDataValue(value[field.name])]),
+    );
+  }
+
+  private normalizeTypedDataValue(value: unknown): unknown {
+    if (typeof value === "bigint") {
+      return value.toString();
+    }
+
+    if (Array.isArray(value)) {
+      return value.map((item) => this.normalizeTypedDataValue(item));
+    }
+
+    if (value && typeof value === "object") {
+      return Object.fromEntries(
+        Object.entries(value as Record<string, unknown>).map(([key, currentValue]) => [
+          key,
+          this.normalizeTypedDataValue(currentValue),
+        ]),
+      );
+    }
+
+    return value;
   }
 }
