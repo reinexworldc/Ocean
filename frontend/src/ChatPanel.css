@@ -5,6 +5,7 @@
   flex-direction: column;
   min-height: 0;
   padding-top: 0;
+  position: relative;
 }
 
 .main-content {
@@ -13,8 +14,6 @@
   justify-content: flex-start;
   align-items: stretch;
   min-width: 0;
-  padding-top: 36px;
-  box-sizing: border-box;
   overflow-y: auto;
 }
 
@@ -33,7 +32,7 @@
 .chat-panel-heading {
   position: absolute;
   top: -24px;
-  right: 20px;
+  right: 10px;
   z-index: 1;
   display: flex;
   justify-content: flex-end;
@@ -49,6 +48,7 @@
   line-height: 18px;
   color: #575656;
   white-space: nowrap;
+  pointer-events: none;
 }
 
 .chat-container {

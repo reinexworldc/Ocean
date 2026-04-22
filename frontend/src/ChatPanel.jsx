@@ -3,12 +3,12 @@ import './ChatPanel.css';
 function ChatPanel({ title }) {
   return (
     <div className="chat-panel">
+      <div className="chat-panel-heading">
+        <h2 className="chat-title">{title}</h2>
+      </div>
+
       <main className="main-content">
         <div className="chat-wrapper">
-          <div className="chat-panel-heading">
-            <h2 className="chat-title">{title}</h2>
-          </div>
-
           <div className="chat-container">
             <div className="chat-header-actions">
             </div>
