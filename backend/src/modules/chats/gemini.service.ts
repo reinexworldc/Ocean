@@ -125,7 +125,7 @@ export class GeminiService {
       "Do not mention x402, payment plumbing, or internal implementation details unless the user asks.",
       "If the tool results are incomplete, be transparent about the gap.",
       "Respond in plain text.",
-      `PREMIUM_TOOL_RESULTS_JSON:\n${JSON.stringify(toolResults, null, 2)}`,
+      `PREMIUM_TOOL_RESULTS_JSON:\n${this.safeJsonStringify(toolResults)}`,
       "CHAT_TRANSCRIPT:",
       transcript,
     ].join("\n\n");
@@ -246,5 +246,13 @@ export class GeminiService {
     return typeof value === "string" && HISTORY_PERIODS.includes(value as HistoryPeriod)
       ? (value as HistoryPeriod)
       : null;
+  }
+
+  private safeJsonStringify(value: unknown) {
+    return JSON.stringify(
+      value,
+      (_key, currentValue) => (typeof currentValue === "bigint" ? currentValue.toString() : currentValue),
+      2,
+    );
   }
 }

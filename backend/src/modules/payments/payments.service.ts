@@ -221,7 +221,7 @@ export class PaymentsService {
         signTypedData: async ({ domain, types, primaryType, message }) => {
           const response = await circleClient.signTypedData({
             walletId: circleWalletId,
-            data: JSON.stringify({
+            data: this.toJsonString({
               domain,
               types,
               primaryType,
@@ -276,6 +276,12 @@ export class PaymentsService {
   }
 
   private toMetadataValue(value: Record<string, unknown>): Prisma.InputJsonValue {
-    return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+    return JSON.parse(this.toJsonString(value)) as Prisma.InputJsonValue;
+  }
+
+  private toJsonString(value: unknown) {
+    return JSON.stringify(value, (_key, currentValue) =>
+      typeof currentValue === "bigint" ? currentValue.toString() : currentValue,
+    );
   }
 }
