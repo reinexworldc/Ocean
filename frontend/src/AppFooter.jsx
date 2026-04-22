@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import './AppFooter.css';
 
@@ -31,9 +31,17 @@ function AppFooter({ onSubmit, disabled, isSending, walletState, walletError }) 
   const [isFocused, setIsFocused] = useState(false);
   const [caretOffset, setCaretOffset] = useState(0);
   const [submitError, setSubmitError] = useState('');
+  const [selectionStart, setSelectionStart] = useState(0);
   const measureRef = useRef(null);
+  const inputRef = useRef(null);
   const promptText = getPromptText(disabled, isSending, walletState);
   const displayError = submitError || (disabled ? walletError?.message ?? '' : '');
+
+  useEffect(() => {
+    if (!disabled && !isSending) {
+      inputRef.current?.focus();
+    }
+  }, [disabled, isSending]);
 
   useLayoutEffect(() => {
     if (!measureRef.current) {
@@ -42,8 +50,12 @@ function AppFooter({ onSubmit, disabled, isSending, walletState, walletError }) 
 
     const measureWidth = measureRef.current.getBoundingClientRect().width;
 
-    setCaretOffset(value.length === 0 ? 0 : Math.max(0, measureWidth - 1));
-  }, [value]);
+    setCaretOffset(Math.max(0, measureWidth > 0 ? measureWidth - 1 : 0));
+  }, [value, selectionStart]);
+
+  function syncCaret() {
+    setSelectionStart(inputRef.current?.selectionStart ?? 0);
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -54,12 +66,15 @@ function AppFooter({ onSubmit, disabled, isSending, walletState, walletError }) 
     }
 
     setSubmitError('');
+    setValue('');
 
     try {
       await onSubmit(trimmedValue);
-      setValue('');
     } catch (error) {
+      setValue(trimmedValue);
       setSubmitError(error instanceof Error ? error.message : 'Failed to send message.');
+    } finally {
+      inputRef.current?.focus();
     }
   }
 
@@ -76,19 +91,27 @@ function AppFooter({ onSubmit, disabled, isSending, walletState, walletError }) 
               />
             )}
             <input
+              ref={inputRef}
               type="text"
               className="app-footer__input"
               value={value}
-              onChange={(event) => setValue(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key !== 'Enter') {
-                  return;
-                }
-
-                event.preventDefault();
-                void handleSubmit(event);
+              onChange={(event) => {
+                setValue(event.target.value);
+                setSelectionStart(event.target.selectionStart ?? 0);
               }}
-              onFocus={() => setIsFocused(true)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  void handleSubmit(event);
+                }
+              }}
+              onKeyUp={syncCaret}
+              onSelect={syncCaret}
+              onClick={syncCaret}
+              onFocus={() => {
+                setIsFocused(true);
+                syncCaret();
+              }}
               onBlur={() => setIsFocused(false)}
               disabled={disabled || isSending}
             />
@@ -98,7 +121,7 @@ function AppFooter({ onSubmit, disabled, isSending, walletState, walletError }) 
               </span>
             )}
             <span ref={measureRef} className="app-footer__inputMeasure" aria-hidden="true">
-              {value.replace(/ /g, '\u00A0')}
+              {value.slice(0, selectionStart).replace(/ /g, '\u00A0')}
             </span>
           </div>
         </form>
