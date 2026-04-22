@@ -14,15 +14,23 @@ export async function apiRequest(path, options = {}) {
     ...options,
   });
 
+  const isJsonResponse = response.headers.get('content-type')?.includes('application/json');
+  const responseBody =
+    response.status === 204 ? null : isJsonResponse ? await response.json() : await response.text();
+
   if (!response.ok) {
-    const error = new Error(`API request failed with status ${response.status}`);
+    const errorMessage =
+      (responseBody && typeof responseBody === 'object' && 'message' in responseBody
+        ? responseBody.message
+        : null) ||
+      (typeof responseBody === 'string' && responseBody.trim().length > 0 ? responseBody : null) ||
+      `API request failed with status ${response.status}`;
+
+    const error = new Error(errorMessage);
     error.status = response.status;
+    error.data = responseBody;
     throw error;
   }
 
-  if (response.status === 204) {
-    return null;
-  }
-
-  return response.json();
+  return responseBody;
 }

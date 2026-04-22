@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import arrowUpIcon from './assets/arrow-up-1-svgrepo-com.svg';
-import coinbaseLogo from './assets/coinbase-v2-svgrepo-com (1).svg';
 import connectIcon from './assets/connect-svgrepo-com.svg';
 import logoutIcon from './assets/logout-svgrepo-com.svg';
 import './AppHeader.css';
@@ -25,7 +24,37 @@ function getDisplayName(user) {
   return 'GUEST';
 }
 
-function AppHeader({ user, userStatus, onSaveProfile, onSignOut }) {
+function getWalletActionLabel(walletState) {
+  if (walletState === 'connecting') {
+    return 'CONNECTING...';
+  }
+
+  if (walletState === 'authenticating') {
+    return 'SIGNING...';
+  }
+
+  if (walletState === 'readyToSign') {
+    return 'RETRY SIGN-IN';
+  }
+
+  if (walletState === 'connected') {
+    return 'CONNECTED';
+  }
+
+  return 'CONNECT WALLET';
+}
+
+function AppHeader({
+  user,
+  userStatus,
+  onSaveProfile,
+  onSignOut,
+  onConnectWallet,
+  onRetryAuthentication,
+  isAuthenticated,
+  walletAddress: connectedWalletAddress,
+  walletState,
+}) {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -36,8 +65,11 @@ function AppHeader({ user, userStatus, onSaveProfile, onSignOut }) {
 
   const displayName = useMemo(() => getDisplayName(user), [user]);
   const email = user?.email?.trim() ? user.email : 'NO EMAIL SET';
-  const walletAddress = formatWalletAddress(user?.walletAddress);
-  const isAuthenticated = userStatus === 'success' && user !== null;
+  const walletAddress = formatWalletAddress(connectedWalletAddress);
+  const isWalletActionPending = walletState === 'connecting' || walletState === 'authenticating';
+  const canTriggerWalletAction = walletState !== 'connected' && !isWalletActionPending;
+  const isProfileReady = isAuthenticated && userStatus !== 'loading';
+
   async function handleSubmit(event) {
     event.preventDefault();
 
@@ -75,8 +107,12 @@ function AppHeader({ user, userStatus, onSaveProfile, onSignOut }) {
       return;
     }
 
-    await onSignOut();
-    setIsEditing(false);
+    try {
+      await onSignOut();
+      setIsEditing(false);
+    } catch {
+      // Wallet/session errors are surfaced through shared auth state.
+    }
   }
 
   function handleToggleEditing() {
@@ -92,6 +128,23 @@ function AppHeader({ user, userStatus, onSaveProfile, onSignOut }) {
     });
     setSaveError('');
     setIsEditing(true);
+  }
+
+  async function handleWalletAction() {
+    if (!canTriggerWalletAction) {
+      return;
+    }
+
+    try {
+      if (walletState === 'readyToSign') {
+        await onRetryAuthentication();
+        return;
+      }
+
+      await onConnectWallet();
+    } catch {
+      // Wallet/session errors are surfaced through shared auth state.
+    }
   }
 
   return (
@@ -111,7 +164,7 @@ function AppHeader({ user, userStatus, onSaveProfile, onSignOut }) {
             <button
               type="button"
               className="settings-btn"
-              disabled={!isAuthenticated}
+              disabled={!isProfileReady}
               onClick={handleToggleEditing}
             >
               {isEditing ? 'CANCEL' : 'SETTINGS'}
@@ -158,16 +211,18 @@ function AppHeader({ user, userStatus, onSaveProfile, onSignOut }) {
             <div className="account-panel__section-copy">
               <div className="section-title">EXTERNAL WALLET</div>
               <div className="section-secondary wallet-address">
-                <img
-                  src={coinbaseLogo}
-                  alt="Coinbase"
-                  className="wallet-icon"
-                />
-                <span className="wallet-address__divider" aria-hidden="true" />
                 <span className="wallet-address__value">{walletAddress}</span>
               </div>
             </div>
-            <img src={connectIcon} alt="" aria-hidden="true" className="section-action-icon" />
+            <button
+              type="button"
+              className="section-action-button"
+              disabled={!canTriggerWalletAction}
+              onClick={handleWalletAction}
+              aria-label={getWalletActionLabel(walletState)}
+            >
+              <img src={connectIcon} alt="" aria-hidden="true" className="section-action-icon" />
+            </button>
           </div>
 
           <div className="account-panel__section account-panel__section--credits">

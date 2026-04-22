@@ -10,9 +10,3 @@ export function updateCurrentUserProfile(payload) {
     body: JSON.stringify(payload),
   });
 }
-
-export function signOut() {
-  return apiRequest('/auth/sign-out', {
-    method: 'POST',
-  });
-}

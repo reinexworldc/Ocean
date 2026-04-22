@@ -5,6 +5,7 @@ import ChatPanel from './ChatPanel';
 import OceanSidebar from './OceanSidebar';
 import './App.css';
 import { useCurrentUserProfile } from './hooks/useCurrentUserProfile';
+import { useWalletSession } from './hooks/useWalletSession';
 
 const recentChats = [
   { title: 'Moon Analyze', time: '15m ago' },
@@ -14,12 +15,26 @@ const recentChats = [
 
 function App() {
   const [selectedChatTitle, setSelectedChatTitle] = useState(recentChats[0].title);
+  const walletSession = useWalletSession();
   const {
     user,
     status: userStatus,
     saveUserProfile,
-    signOut,
-  } = useCurrentUserProfile();
+  } = useCurrentUserProfile({
+    enabled: walletSession.isAuthenticated,
+    userId: walletSession.user?.id ?? null,
+  });
+
+  const currentUser = useMemo(() => {
+    if (!walletSession.user && !user) {
+      return null;
+    }
+
+    return {
+      ...(walletSession.user ?? {}),
+      ...(user ?? {}),
+    };
+  }, [user, walletSession.user]);
 
   const selectedChat = useMemo(
     () => recentChats.find((chat) => chat.title === selectedChatTitle) ?? recentChats[0],
@@ -29,10 +44,15 @@ function App() {
   return (
     <div className="app-container">
       <AppHeader
-        user={user}
+        user={currentUser}
         userStatus={userStatus}
         onSaveProfile={saveUserProfile}
-        onSignOut={signOut}
+        onSignOut={walletSession.signOut}
+        onConnectWallet={walletSession.connectWallet}
+        onRetryAuthentication={walletSession.retryAuthentication}
+        isAuthenticated={walletSession.isAuthenticated}
+        walletAddress={walletSession.walletAddress}
+        walletState={walletSession.walletState}
       />
 
       <div className="content-shell">
