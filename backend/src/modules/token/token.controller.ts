@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query } from "@nestjs/common";
+import { Controller, Get, Inject, Param, Query } from "@nestjs/common";
 import { x402RouteConfigs } from "../../common/x402/x402-route-configs.js";
 import { RequireX402 } from "../../common/x402/require-x402.decorator.js";
 import { type GetTokenHistoryQueryDto } from "./dto/get-token-history-query.dto.js";
@@ -6,7 +6,7 @@ import { TokenService } from "./token.service.js";
 
 @Controller("token")
 export class TokenController {
-  constructor(private readonly tokenService: TokenService) {}
+  constructor(@Inject(TokenService) private readonly tokenService: TokenService) {}
 
   /**
    * Returns the main token card with market data and status.

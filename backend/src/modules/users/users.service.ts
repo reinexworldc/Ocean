@@ -1,11 +1,11 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { type UserModel as User } from "../../generated/prisma/models/User.js";
 import { PrismaService } from "../../prisma/prisma.service.js";
 import { type UpdateCurrentUserDto } from "./dto/update-current-user.dto.js";
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async getCurrentUserProfile(userId: string) {
     const user = await this.prisma.user.findUnique({

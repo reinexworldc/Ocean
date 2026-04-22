@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, Injectable } from "@nestjs/common";
+import { CanActivate, ExecutionContext, Inject, Injectable } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { X402_CHARGE_METADATA_KEY } from "./x402.constants.js";
 import { X402Service } from "./x402.service.js";
@@ -9,8 +9,8 @@ type NextFunction = (error?: unknown) => void;
 @Injectable()
 export class X402PaymentGuard implements CanActivate {
   constructor(
-    private readonly reflector: Reflector,
-    private readonly x402Service: X402Service,
+    @Inject(Reflector) private readonly reflector: Reflector,
+    @Inject(X402Service) private readonly x402Service: X402Service,
   ) {}
 
   async canActivate(context: ExecutionContext) {

@@ -1,11 +1,11 @@
-import { Controller, Get, Param } from "@nestjs/common";
+import { Controller, Get, Inject, Param } from "@nestjs/common";
 import { x402RouteConfigs } from "../../common/x402/x402-route-configs.js";
 import { RequireX402 } from "../../common/x402/require-x402.decorator.js";
 import { PortfolioService } from "./portfolio.service.js";
 
 @Controller("portfolio")
 export class PortfolioController {
-  constructor(private readonly portfolioService: PortfolioService) {}
+  constructor(@Inject(PortfolioService) private readonly portfolioService: PortfolioService) {}
 
   /**
    * Returns the wallet portfolio with balances and P&L.

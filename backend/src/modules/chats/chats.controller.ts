@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Inject,
   Param,
   Patch,
   Post,
@@ -19,7 +20,7 @@ import { type UpdateChatDto } from "./dto/update-chat.dto.js";
 @Controller("chats")
 @UseGuards(SessionAuthGuard)
 export class ChatsController {
-  constructor(private readonly chatsService: ChatsService) {}
+  constructor(@Inject(ChatsService) private readonly chatsService: ChatsService) {}
 
   @Get()
   listChats(@CurrentUser() user: AuthenticatedUser) {

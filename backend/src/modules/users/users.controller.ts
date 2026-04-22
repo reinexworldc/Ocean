@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Inject, Patch, UseGuards } from "@nestjs/common";
 import { type AuthenticatedUser } from "../auth/auth.types.js";
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import { SessionAuthGuard } from "../auth/guards/session-auth.guard.js";
@@ -8,7 +8,7 @@ import { UsersService } from "./users.service.js";
 @Controller("users")
 @UseGuards(SessionAuthGuard)
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(@Inject(UsersService) private readonly usersService: UsersService) {}
 
   @Get("me")
   getCurrentUserProfile(@CurrentUser() user: AuthenticatedUser) {

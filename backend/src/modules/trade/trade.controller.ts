@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from "@nestjs/common";
+import { Body, Controller, Inject, Post } from "@nestjs/common";
 import { x402RouteConfigs } from "../../common/x402/x402-route-configs.js";
 import { RequireX402 } from "../../common/x402/require-x402.decorator.js";
 import { type TradeRequestDto } from "./dto/trade-request.dto.js";
@@ -6,7 +6,7 @@ import { TradeService } from "./trade.service.js";
 
 @Controller("trade")
 export class TradeController {
-  constructor(private readonly tradeService: TradeService) {}
+  constructor(@Inject(TradeService) private readonly tradeService: TradeService) {}
 
   /**
    * Blueprint for buying a token with USDC.

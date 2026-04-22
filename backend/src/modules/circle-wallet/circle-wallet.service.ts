@@ -1,4 +1,5 @@
 import {
+  Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -38,7 +39,7 @@ type FundingSummary = {
 export class CircleWalletService {
   private readonly logger = new Logger(CircleWalletService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async getWalletSummaryForUser(userId: string) {
     const [user, fundingTransaction] = await Promise.all([

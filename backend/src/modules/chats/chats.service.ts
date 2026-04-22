@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -30,8 +31,8 @@ export class ChatsService {
   private readonly logger = new Logger(ChatsService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly geminiService: GeminiService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(GeminiService) private readonly geminiService: GeminiService,
   ) {}
 
   async listChats(userId: string) {

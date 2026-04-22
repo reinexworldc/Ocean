@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import { type UserModel as User } from "../../generated/prisma/models/User.js";
 import { CircleWalletService } from "../circle-wallet/circle-wallet.service.js";
 
@@ -6,7 +6,10 @@ import { CircleWalletService } from "../circle-wallet/circle-wallet.service.js";
 export class AuthOnboardingService {
   private readonly logger = new Logger(AuthOnboardingService.name);
 
-  constructor(private readonly circleWalletService: CircleWalletService) {}
+  constructor(
+    @Inject(CircleWalletService)
+    private readonly circleWalletService: CircleWalletService,
+  ) {}
 
   async ensureUserProvisioned(user: User) {
     this.logger.log(`Ensuring Circle wallet and starter funding for user ${user.id}.`);

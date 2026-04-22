@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, Res } from "@nestjs/common";
+import { Body, Controller, Get, Inject, Post, Req, Res } from "@nestjs/common";
 import { type Response } from "express";
 import { AuthService } from "./auth.service.js";
 import { type AuthenticatedRequest } from "./auth.types.js";
@@ -6,7 +6,7 @@ import { type VerifySiweRequestDto } from "./dto/verify-siwe-request.dto.js";
 
 @Controller("auth")
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(@Inject(AuthService) private readonly authService: AuthService) {}
 
   @Get("siwe/nonce")
   getSiweNonce(@Res({ passthrough: true }) response: Response) {

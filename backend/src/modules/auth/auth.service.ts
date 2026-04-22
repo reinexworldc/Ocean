@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { SiweMessage } from "siwe";
 import { getAddress } from "viem";
 import { type UserModel as User } from "../../generated/prisma/models/User.js";
@@ -19,8 +19,10 @@ type CookieWriter = {
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(AuthSessionService)
     private readonly authSessionService: AuthSessionService,
+    @Inject(AuthOnboardingService)
     private readonly authOnboardingService: AuthOnboardingService,
   ) {}
 
