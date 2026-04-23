@@ -80,6 +80,25 @@ export class GeminiService {
     @Optional() @Inject(OpenRouterService) private readonly openRouterService?: OpenRouterService,
   ) {}
 
+  async generateChatTitle(userMessage: string, assistantMessage: string): Promise<string | undefined> {
+    const userSnippet = userMessage.slice(0, 400).trim();
+    const assistantSnippet = assistantMessage.slice(0, 250).trim();
+
+    const prompt = `Generate a concise, descriptive title for this crypto AI assistant conversation.
+Requirements: 3–6 words, captures the main topic, no quotes, no trailing punctuation, English only.
+
+User: ${userSnippet}
+Assistant: ${assistantSnippet}
+
+Title:`;
+
+    try {
+      return await this.generateText(prompt);
+    } catch {
+      return undefined;
+    }
+  }
+
   async generateReply(messages: GeminiChatMessage[], onModelSwap?: ModelSwapCallback) {
     const text = await this.generateText(buildReplyPrompt(messages), onModelSwap);
 

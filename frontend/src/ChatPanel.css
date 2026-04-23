@@ -154,7 +154,9 @@
 /* ── Empty state ───────────────────────────────────────────────────────── */
 .chat-empty-state p {
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
+  color: #1a1a1a;
+  margin: 0;
 }
 
 .chat-empty-state__error {
@@ -166,7 +168,7 @@
 .message-row {
   display: flex;
   width: 100%;
-  margin-bottom: 18px;
+  margin-bottom: 28px;
 }
 
 .user-row {
@@ -180,7 +182,7 @@
 .message-bubble-group {
   display: flex;
   flex-direction: column;
-  max-width: 65%;
+  max-width: 72%;
   min-width: 0;
 }
 
@@ -190,27 +192,35 @@
 
 .message-bubble-group--assistant {
   align-items: flex-start;
+  max-width: 100%;
 }
 
 .message-sender {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-style: normal;
-  font-weight: 500;
-  font-size: 12px;
-  line-height: 15px;
-  color: #8c8c8c;
-  margin-bottom: 4px;
+  font-weight: 600;
+  font-size: 11px;
+  line-height: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #a0a0a0;
+  margin-bottom: 5px;
   white-space: nowrap;
 }
 
+.message-bubble-group--user .message-sender {
+  text-align: right;
+}
+
+/* User message: subtle highlight strip */
 .message-bubble {
-  padding: 10px 14px;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-style: normal;
-  font-weight: 500;
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
   word-break: break-word;
+  background: none;
+  padding: 0;
 }
 
 .message-bubble p {
@@ -219,12 +229,32 @@
   word-break: break-word;
 }
 
-/* Markdown content inside assistant bubbles */
+.message-bubble--user {
+  font-weight: 500;
+  color: #ffffff;
+}
+
+.message-bubble--user .message-bubble__text {
+  display: inline-block;
+  background: #111111;
+  border-radius: 14px 14px 3px 14px;
+  padding: 9px 14px;
+  line-height: 1.5;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
+
+.message-bubble--assistant {
+  font-weight: 400;
+  color: #1a1a1a;
+}
+
+/* Markdown content inside assistant messages */
 .message-markdown {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.65;
   word-break: break-word;
+  color: #1a1a1a;
 }
 
 .message-markdown > *:first-child { margin-top: 0; }
@@ -237,7 +267,7 @@
 
 .message-markdown strong {
   font-weight: 700;
-  color: #1a1a1a;
+  color: #111111;
 }
 
 .message-markdown em {
@@ -248,8 +278,8 @@
 .message-markdown h2,
 .message-markdown h3 {
   font-weight: 700;
-  margin: 14px 0 4px;
-  color: #1a1a1a;
+  margin: 16px 0 4px;
+  color: #111111;
 }
 
 .message-markdown h1 { font-size: 16px; }
@@ -272,21 +302,21 @@
 
 .message-markdown hr {
   border: none;
-  border-top: 1px solid #c8c8c8;
-  margin: 10px 0;
+  border-top: 1px solid #d8d8d8;
+  margin: 12px 0;
 }
 
 .message-markdown code {
   font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
   font-size: 12px;
-  background: #e4e4e4;
+  background: rgba(0, 0, 0, 0.07);
   border-radius: 3px;
-  padding: 1px 4px;
+  padding: 1px 5px;
 }
 
 .message-markdown pre {
-  background: #e4e4e4;
-  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 5px;
   padding: 10px 12px;
   overflow-x: auto;
   margin: 6px 0;
@@ -298,30 +328,18 @@
   font-size: 12px;
 }
 
-.message-bubble--assistant {
-  background: #dcdcdc;
-  color: #000000;
-  border-radius: 5px 5px 5px 0px;
-}
-
-.message-bubble--user {
-  background: #dcdcdc;
-  color: #000000;
-  border-radius: 5px 5px 0px 5px;
-}
-
 .message-bubble--pending {
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
-.message-bubble--failed {
-  background: #f5e0e0;
+.message-bubble--failed .message-markdown {
   color: #8b3a3a;
 }
 
-.message-bubble--user.message-bubble--failed {
+.message-bubble--user.message-bubble--failed .message-bubble__text {
   background: #f5e0e0;
   color: #8b3a3a;
+  box-shadow: none;
 }
 
 @media (max-width: 1080px) {

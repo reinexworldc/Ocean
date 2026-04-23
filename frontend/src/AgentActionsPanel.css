@@ -14,26 +14,118 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 3px 8px 3px 6px;
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
+  padding: 4px 8px 4px 7px;
+  background: #ebebeb;
   border-radius: 20px;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-size: 11px;
+  font-weight: 500;
   line-height: 15px;
-  color: #16a34a;
+  color: #444444;
   white-space: nowrap;
-  cursor: default;
-}
-
-.agent-actions-savings strong {
-  font-weight: 700;
 }
 
 .agent-actions-savings-icon {
   display: block;
   flex-shrink: 0;
-  color: #22c55e;
+  color: #888;
+}
+
+/* ── Savings FAQ ─────────────────────────────────────────── */
+
+.savings-faq-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.savings-faq-btn {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #d4d4d4;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  color: #666;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.savings-faq-btn:hover {
+  background: #c0c0c0;
+  color: #333;
+}
+
+.savings-faq-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+
+.savings-faq-popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  width: 300px;
+  background: #fff;
+  border: 1px solid #e4e4e4;
+  border-radius: 10px;
+  padding: 14px 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.09);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.savings-faq-title {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.savings-faq-body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #555;
+}
+
+.savings-faq-body strong {
+  font-weight: 600;
+  color: #222;
+}
+
+.savings-faq-list {
+  margin: 0;
+  padding: 0 0 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.savings-faq-list li {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 11px;
+  line-height: 1.55;
+  color: #666;
+}
+
+.savings-faq-list li strong {
+  font-weight: 600;
+  color: #333;
 }
 
 /* Summary row — acts as the toggle button */
@@ -198,6 +290,42 @@
   text-decoration: underline;
 }
 
+/* ── Signal Processor — standalone card ────────────────── */
+
+.signal-processor {
+  margin-bottom: 10px;
+  max-width: 65%;
+  padding: 11px 13px;
+  background: #fafafa;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.signal-processor-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.signal-processor-label {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  flex: 1;
+}
+
+.signal-processor-cost {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: #c4c4c4;
+  white-space: nowrap;
+}
+
 /* ── Signal Agent unique panel ──────────────────────────── */
 
 .signal-badge {
@@ -224,23 +352,15 @@
   border-radius: 4px;
 }
 
-.signal-agent-panel {
-  margin: 5px 0 2px 20px;
-  padding: 10px 12px;
-  background: #fafafa;
-  border: 1px solid #e8e8e8;
-  border-radius: 7px;
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-}
-
-/* A2A payment chain */
+/* A2A payment chain — subtle footer */
 .signal-chain {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 3px;
+  padding-top: 6px;
+  border-top: 1px solid #efefef;
+  margin-top: 2px;
 }
 
 .signal-chain-node {
@@ -249,20 +369,15 @@
   gap: 3px;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-size: 10px;
-  font-weight: 600;
-  padding: 2px 7px;
-  border-radius: 4px;
+  font-weight: 500;
+  color: #9ca3af;
   white-space: nowrap;
 }
-
-.signal-chain-node--you   { background: #e5e7eb; color: #374151; }
-.signal-chain-node--agent { background: #ede9fe; color: #5b21b6; }
-.signal-chain-node--api   { background: #dbeafe; color: #1d4ed8; }
 
 .signal-chain-tx {
   font-size: 9px;
   color: inherit;
-  opacity: 0.7;
+  opacity: 0.6;
   text-decoration: none;
   margin-left: 1px;
 }
@@ -271,17 +386,18 @@
 
 .signal-chain-edge {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 1px;
+  gap: 3px;
 }
 
 .signal-chain-amount {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-size: 9px;
   font-weight: 500;
-  color: #9ca3af;
+  color: #c4c4c4;
   line-height: 1;
+  white-space: nowrap;
 }
 
 .signal-chain-arrow-svg {
@@ -348,6 +464,55 @@
 }
 
 /* ── end Signal Agent panel ─────────────────────────────── */
+
+/* External token badge (e.g. BTC alongside MOON in a comparison) */
+.agent-actions-item-token--external {
+  background: #e8f0fe;
+  color: #3b5bdb;
+}
+
+/* ── Compare data-source breakdown ──────────────────────── */
+
+.agent-actions-compare-list {
+  list-style: none;
+  margin: 4px 0 4px 20px;
+  padding: 0 0 0 8px;
+  border-left: 1.5px solid #e5e5e5;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.agent-actions-compare-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+
+.agent-actions-compare-source {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: #666;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 72px;
+}
+
+.agent-actions-compare-detail {
+  font-family: 'JetBrains Mono', 'Fira Mono', 'Courier New', monospace;
+  font-size: 10px;
+  line-height: 14px;
+  color: #999;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── end Compare breakdown ──────────────────────────────── */
 
 /* RPC breakdown sub-list */
 .agent-actions-rpc-list {

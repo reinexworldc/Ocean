@@ -75,6 +75,8 @@ export function buildAnomalyDetectionPrompt(params: {
     `- Supported history periods: ${HISTORY_PERIODS.join(", ")}.`,
     "- Deduplication: two actions are duplicates only when type + tokenId + period all match.",
     "- CRITICAL: Only investigate anomalies for tokens the user explicitly requested in their message. Do NOT flag or fetch additional data for tokens that only appeared incidentally (e.g. in a market overview top-losers/gainers list). If the user asked about MOON, only run diagnostic checks on MOON.",
+    "- CRITICAL: Do NOT emit get_signal if the already-executed actions include compare_arc_token. Token comparison is a data query — not a buy/sell decision. Only emit get_signal when the user explicitly asked for a trading signal, buy/sell recommendation, or momentum verdict.",
+    "- CRITICAL: Do NOT emit get_signal if the user's message is a comparison request (contains words like 'compare', 'vs', 'versus', 'contrast', 'benchmark', 'compare 2 tokens', 'how does X compare to Y'). Comparison requests are data queries, not signal requests. get_signal is only appropriate when the user explicitly asks for a signal, recommendation, buy/sell advice, or directional verdict.",
 
     `Already executed actions (do NOT repeat):\n${safeJsonStringify(alreadyExecutedKeys)}`,
     `Tool results:\n${safeJsonStringify(params.toolResults)}`,

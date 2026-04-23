@@ -94,15 +94,36 @@ OCEAN AGENT  includes verdict in Gemini reply
 USER  sees the signal + two on-chain settlement links
 ```
 
-### Why this matters
+---
 
-The Signal Agent is a **separate economic actor**. It owns its receiver address, sets its own price, and independently pays for the data it needs. The Ocean agent does not know or care how the signal is computed — it just pays $0.005 and receives a verdict. This is the same relationship as any API marketplace, except:
+## Signal Agent Self-Funding — Real Autonomy, Not Simulation
 
-- No registration, no API keys, no contracts — just an x402 HTTP header
-- Every purchase is a verifiable on-chain event with a block explorer link
-- Any third-party could deploy a competing Signal Agent and Ocean could route to it instead
+Most "autonomous agent" demos fake it. The agent calls a function, the function calls an API, the API bill goes to the developer's credit card. There is no agent economy — there is just a developer paying for everything through a layer of abstraction.
 
-One agent buying a service from another agent — each settling on Arc in real time — is the primitive that makes autonomous agent economies possible.
+Ocean's Signal Agent is structurally different.
+
+**What it owns:**
+- Its own EOA private key (`SIGNAL_AGENT_PRIVATE_KEY`) — a real wallet, not a mock
+- Its own receiver address (`SIGNAL_AGENT_RECEIVER_ADDRESS`) — where it earns revenue
+- Its own pricing — $0.005 per signal, set independently of the Ocean agent
+
+**What it does without any human involvement:**
+1. Receives $0.005 USDC from the Ocean agent → on-chain settlement ①
+2. Decides it needs token profile data to compute its verdict
+3. Pays $0.01 USDC from its own key to `GET /token/:id/profile` → on-chain settlement ②
+4. Returns `{ signal: "sell", confidence: 0.82, reasoning: "..." }` to the Ocean agent
+
+No developer initiated step 3. No human signed that transaction. The Signal Agent spent its own money — autonomously, on-chain, with a verifiable transaction hash — to buy the data it needed to do its job.
+
+**Why Arc makes this possible:**
+
+On Ethereum L1, the Signal Agent's $0.01 payment would cost more in gas than the payment itself. The economics collapse before they begin. On Arc, the gas is negligible, the settlement is instant, and the Signal Agent can operate at a profit even at fractions of a cent per call.
+
+**What this unlocks:**
+
+> Any third party can deploy a competing Signal Agent, set a different price, and Ocean can route to it instead. The only credential required is an x402 HTTP header. There is no registration, no API key, no contract to sign. The market for agent services is open by default.
+
+This is not a payment demo with agents bolted on. It is an agent economy with payments as the primitive.
 
 ---
 
@@ -117,6 +138,7 @@ One agent buying a service from another agent — each settling on Arc in real t
      • GET /token/moon/profile → HTTP 402 → $0.01 USDC paid → token metadata
      • GET /token/moon/erc20  → HTTP 402 → $0.01 USDC paid → on-chain contract info
      • GET /token/moon/holders → HTTP 402 → $0.01 USDC paid → holder balances
+     • GET /compare/MOON?vs=bitcoin → HTTP 402 → $0.02 USDC paid → Arc vs CoinGecko comparison
 5. Each payment: EIP-712 TransferWithAuthorization signed by Circle wallet
                  → submitted to Arc via x402 facilitator
                  → settlement tx hash returned
@@ -141,6 +163,7 @@ One agent buying a service from another agent — each settling on Arc in real t
 | `POST /trade/buy` | Execute token buy | **$0.05** | Ocean |
 | `POST /trade/sell` | Execute token sell | **$0.05** | Ocean |
 | `GET /signals/:tokenId` | Buy/sell/hold signal from Signal Agent | **$0.005** | Signal Agent |
+| `GET /compare/:arcTokenId?vs=` | Compare Arc token vs real-world coin (CoinGecko) | **$0.02** | Ocean |
 
 > Dynamic-price routes (`transfers`, `holders`, `history`) compute the exact cost from RPC operations performed and charge the maximum of the computed cost and $0.01 minimum.
 
@@ -208,6 +231,7 @@ A concrete example for a 7-tool agent query:
 - **Prisma 7 + SQLite** — user, chat, message, trade, transaction models
 - **viem** — Arc RPC reads (logs, balanceOf, ERC-20 calls)
 - **Google Gemini** — multi-phase agent planner + reply generator
+- **CoinGecko API (free tier)** — real-world market data for Arc-token comparisons (price, volume, 24h/7d/30d change, ATH); 60-second in-memory cache, no API key required
 - **@x402/core · @x402/evm · @x402/express** — x402 payment protocol
 - **@circle-fin/developer-controlled-wallets** — Circle wallet provisioning + signing
 - **@circle-fin/x402-batching** — Gateway client for USDC deposit
@@ -250,6 +274,7 @@ ocean/
 │   │       ├── market/       # Aggregated market data
 │   │       ├── payments/     # x402 client, paid-api-catalog
 │   │       ├── portfolio/    # On-chain portfolio reads
+│   │       ├── compare/      # Arc token vs CoinGecko comparison: GET /compare/:id?vs=
 │   │       ├── signals/      # Signal Agent (A2A): GET /signals/:tokenId
 │   │       ├── token/        # Token data + RPC cost estimators
 │   │       └── trade/        # Buy/sell execution via deployer wallet

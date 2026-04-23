@@ -7,41 +7,52 @@
   min-height: 0;
 }
 
-.ocean-sidebar__header {
+/* ── Actions (top buttons) ── */
+
+.ocean-sidebar__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ocean-sidebar__actionRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.ocean-sidebar__title {
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 13px;
-  color: #8b8b8b;
-}
-
-.ocean-sidebar__newChatButton {
+.ocean-sidebar__actionButton {
   padding: 0;
   border: none;
   background: transparent;
   font: inherit;
   font-size: 11px;
   font-weight: 500;
-  line-height: 13px;
+  line-height: 16px;
+  letter-spacing: 0.03em;
   color: #8b8b8b;
   cursor: pointer;
+  text-align: left;
+  transition: color 0.15s;
 }
 
-.ocean-sidebar__newChatButton:disabled {
+.ocean-sidebar__actionButton:hover:not(:disabled) {
+  color: #2a2a2a;
+}
+
+.ocean-sidebar__actionButton:disabled {
   cursor: default;
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
-.ocean-sidebar__shortcuts {
+/* ── Shortcut badge ── */
+
+.ocean-sidebar__shortcut {
   display: flex;
   align-items: center;
   gap: 3px;
+  flex-shrink: 0;
 }
 
 .ocean-sidebar__shortcutBox {
@@ -63,17 +74,21 @@
   line-height: 1;
 }
 
+/* ── Divider ── */
+
 .ocean-sidebar__divider {
   width: 100%;
-  border-top: 1px solid #8b8b8b;
-  margin-top: 6px;
-  margin-bottom: 20px;
+  border-top: 1px solid #c8c6c6;
+  margin-top: 10px;
+  margin-bottom: 16px;
 }
+
+/* ── Scrollable list ── */
 
 .ocean-sidebar__list {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 2px;
   overflow-y: auto;
   flex: 1;
   min-height: 0;
@@ -82,31 +97,103 @@
   scrollbar-color: #c8c6c6 transparent;
 }
 
+/* ── Empty state ── */
+
 .ocean-sidebar__emptyState {
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.5;
-  color: #8b8b8b;
+  color: #aaa;
 }
 
-.ocean-sidebar__item {
+.ocean-sidebar__emptyState--tree {
+  padding-left: 4px;
+}
+
+/* ── Folder group ── */
+
+.ocean-sidebar__folder {
+  display: flex;
+  flex-direction: column;
+}
+
+.ocean-sidebar__folderHeader {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  letter-spacing: 0.03em;
+  color: #8b8b8b;
+  cursor: pointer;
+  text-align: left;
   width: 100%;
+  transition: color 0.15s;
+}
+
+.ocean-sidebar__folderHeader:hover {
+  color: #2a2a2a;
+}
+
+.ocean-sidebar__folderIcon {
+  font-size: 9px;
+  flex-shrink: 0;
+  line-height: 1;
+  margin-top: -2.5px;
+  color: inherit;
+}
+
+.ocean-sidebar__folderName {
+  flex: 1;
+}
+
+.ocean-sidebar__folderCount {
+  font-size: 10px;
+  font-weight: 400;
+  color: #aaa;
+  margin-left: auto;
+}
+
+/* ── Tree items ── */
+
+.ocean-sidebar__folderItems {
+  display: flex;
+  flex-direction: column;
+  margin-top: 4px;
+  padding-left: 8px;
+  border-left: 1px solid #ddd;
+}
+
+.ocean-sidebar__treeItem {
   display: flex;
   align-items: center;
   gap: 4px;
   color: #8b8b8b;
   position: relative;
+  min-width: 0;
+}
+
+.ocean-sidebar__treeLine {
+  flex-shrink: 0;
+  width: 10px;
+  height: 1px;
+  background: #ddd;
 }
 
 .ocean-sidebar__itemButton {
   flex: 1;
   min-width: 0;
-  padding: 0;
+  padding: 3px 0;
   border: none;
   background: transparent;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 16px;
+  gap: 10px;
   text-align: left;
   font-family: inherit;
   cursor: pointer;
@@ -114,20 +201,21 @@
 }
 
 .ocean-sidebar__itemTitle {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
-  line-height: 17px;
+  line-height: 16px;
   color: inherit;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-transform: uppercase;
 }
 
 .ocean-sidebar__itemTime {
   font-size: 10px;
-  font-weight: 500;
+  font-weight: 400;
   line-height: 12px;
-  color: #7d7d7d;
+  color: #bbb;
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -146,7 +234,7 @@
   transition: opacity 0.15s, color 0.15s;
 }
 
-.ocean-sidebar__item:hover .ocean-sidebar__deleteButton {
+.ocean-sidebar__treeItem:hover .ocean-sidebar__deleteButton {
   opacity: 1;
 }
 
@@ -154,20 +242,30 @@
   color: #8b8b8b;
 }
 
-.ocean-sidebar__item--active {
-  color: #000000;
+/* ── Active state ── */
+
+.ocean-sidebar__treeItem--active {
+  color: #000;
 }
 
-.ocean-sidebar__item--active .ocean-sidebar__itemTime {
-  color: #000000;
+.ocean-sidebar__treeItem--active .ocean-sidebar__itemTime {
+  color: #555;
 }
 
-.ocean-sidebar__item--active .ocean-sidebar__deleteButton {
+.ocean-sidebar__treeItem--active .ocean-sidebar__treeLine {
+  background: #999;
+}
+
+.ocean-sidebar__treeItem--active .ocean-sidebar__deleteButton {
   color: #b0b0b0;
 }
 
-.ocean-sidebar__item--active .ocean-sidebar__deleteButton:hover {
-  color: #000000;
+.ocean-sidebar__treeItem--active .ocean-sidebar__deleteButton:hover {
+  color: #000;
+}
+
+.ocean-sidebar__treeItem--active .ocean-sidebar__itemButton {
+  color: #000;
 }
 
 @media (max-width: 1080px) {

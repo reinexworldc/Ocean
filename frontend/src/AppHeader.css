@@ -16,35 +16,33 @@
 
 .logo-container {
   display: flex;
-  align-items: flex-start;
-  gap: 20px;
-  margin-left: -12px;
+  align-items: center;
+  gap: 8px;
   margin-right: auto;
   pointer-events: auto;
 }
 
 .logo-ocean {
-  height: 39px;
-  font-size: 24px;
-  font-weight: 500;
-  line-height: 34px;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.03em;
   color: #000000;
-  text-decoration: none;
 }
 
 .logo-chat {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 55px;
-  height: 18px;
-  margin-top: 9px;
+  padding: 3px 7px;
   background-color: #000000;
   color: #ffffff;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 15px;
-  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  border-radius: 4px;
+  align-self: center;
 }
 
 .header-right {

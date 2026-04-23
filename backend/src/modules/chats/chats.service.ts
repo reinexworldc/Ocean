@@ -16,7 +16,7 @@ import { type CreateChatMessageDto } from "./dto/create-chat-message.dto.js";
 import { type UpdateChatDto } from "./dto/update-chat.dto.js";
 import { ChatAgentService, type ExecutedAgentAction } from "./chat-agent.service.js";
 import { type TradeProposal } from "./agent-stream.types.js";
-import { type GeminiChatMessage, type PlannedPremiumAction } from "./gemini.service.js";
+import { GeminiService, type GeminiChatMessage, type PlannedPremiumAction } from "./gemini.service.js";
 
 type StreamSession = {
   userId: string;
@@ -34,6 +34,7 @@ type StreamSession = {
   expiresAt: number;
   inProgress: boolean;
   attempts: number;
+  shouldGenerateTitle: boolean;
 };
 
 const DEFAULT_CHAT_TITLE = "New chat";
@@ -58,6 +59,7 @@ export class ChatsService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(ChatAgentService) private readonly chatAgentService: ChatAgentService,
+    @Inject(GeminiService) private readonly geminiService: GeminiService,
   ) {}
 
   async listChats(userId: string) {
@@ -154,7 +156,6 @@ export class ChatsService {
     });
     const content = this.normalizeMessageContent(dto.content);
     const shouldRetitle = await this.shouldRefreshTitle(chat);
-    const nextTitle = shouldRetitle ? this.deriveTitleFromMessage(content) : null;
 
     const userMessage = await this.prisma.message.create({
       data: {
@@ -165,7 +166,7 @@ export class ChatsService {
       },
     });
 
-    await this.touchChat(chatId, nextTitle);
+    await this.touchChat(chatId);
 
     const history = await this.prisma.message.findMany({
       where: {
@@ -180,6 +181,7 @@ export class ChatsService {
     let assistantMessage: Message;
     let agentActions: Array<Record<string, unknown>> = [];
     let tradeProposal: TradeProposal | null = null;
+    let assistantContent = "";
 
     try {
       const agentResult = await this.chatAgentService.generateReply({
@@ -189,7 +191,7 @@ export class ChatsService {
         latestUserMessage: content,
         circleWalletAddress: user?.circleWalletAddress ?? null,
       });
-      const assistantContent = agentResult.content;
+      assistantContent = agentResult.content;
       agentActions = agentResult.executedActions;
       tradeProposal = agentResult.tradeProposal;
 
@@ -217,7 +219,9 @@ export class ChatsService {
       });
     }
 
-    await this.touchChat(chatId);
+    const titleToSet = shouldRetitle ? await this.generateTitle(content, assistantContent) : null;
+
+    await this.touchChat(chatId, titleToSet);
 
     const updatedChat = await this.findOwnedChatWithSummary(userId, chatId);
 
@@ -238,8 +242,7 @@ export class ChatsService {
       select: { circleWalletAddress: true },
     });
     const content = this.normalizeMessageContent(dto.content);
-    const shouldRetitle = await this.shouldRefreshTitle(chat);
-    const nextTitle = shouldRetitle ? this.deriveTitleFromMessage(content) : null;
+    const shouldGenerateTitle = await this.shouldRefreshTitle(chat);
 
     const userMessage = await this.prisma.message.create({
       data: {
@@ -250,7 +253,7 @@ export class ChatsService {
       },
     });
 
-    await this.touchChat(chatId, nextTitle);
+    await this.touchChat(chatId);
 
     const streamToken = randomUUID();
 
@@ -270,6 +273,7 @@ export class ChatsService {
       expiresAt: Date.now() + STREAM_SESSION_TTL_MS,
       inProgress: false,
       attempts: 0,
+      shouldGenerateTitle,
     });
 
     return {
@@ -345,7 +349,12 @@ export class ChatsService {
             },
           });
 
-          await this.touchChat(chatId);
+          const titleToSet =
+            session.shouldGenerateTitle && fullContent
+              ? await this.generateTitle(content, fullContent)
+              : null;
+
+          await this.touchChat(chatId, titleToSet);
 
           const updatedChat = await this.findOwnedChatWithSummary(userId, chatId);
 
@@ -511,6 +520,33 @@ export class ChatsService {
     }
 
     return normalized;
+  }
+
+  private async generateTitle(userMessage: string, assistantMessage: string): Promise<string> {
+    try {
+      const raw = await this.geminiService.generateChatTitle(userMessage, assistantMessage);
+
+      if (raw) {
+        const cleaned = raw
+          .replace(/^["'`«»]+|["'`«»]+$/gu, "")
+          .replace(/[.!?]+$/u, "")
+          .trim();
+
+        if (cleaned.length > 0 && cleaned.length <= MAX_CHAT_TITLE_LENGTH) {
+          return cleaned;
+        }
+
+        if (cleaned.length > MAX_CHAT_TITLE_LENGTH) {
+          return `${cleaned.slice(0, MAX_CHAT_TITLE_LENGTH - 3).trimEnd()}...`;
+        }
+      }
+    } catch (err) {
+      this.logger.warn(
+        `LLM title generation failed, using fallback: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+
+    return this.deriveTitleFromMessage(userMessage);
   }
 
   private async shouldRefreshTitle(chat: Chat) {

@@ -1,7 +1,7 @@
 import { useRef, useState, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import './ChatPanel.css';
-import AgentActionsPanel from './AgentActionsPanel';
+import AgentActionsPanel, { SignalProcessor } from './AgentActionsPanel';
 import ThinkingStream from './ThinkingStream';
 import TradeCard from './TradeCard';
 
@@ -239,6 +239,7 @@ function ChatPanel({
             message.role === 'assistant' ? streamingStateByMessageId?.[message.id] : null;
           const agentActions =
             message.role === 'assistant' ? agentActionsByMessageId?.[message.id] : null;
+          const signalActions = agentActions?.filter((a) => a.type === 'get_signal') ?? [];
           const tradeProposal =
             message.role === 'assistant' ? tradeProposalsByMessageId?.[message.id] : null;
           const hideEmptyBubble = message.status === 'pending' && !message.content;
@@ -265,12 +266,16 @@ function ChatPanel({
                           <ReactMarkdown>{message.content}</ReactMarkdown>
                         </div>
                       ) : (
-                        <p>{message.content}</p>
+                        <span className="message-bubble__text">{message.content}</span>
                       )}
                     </div>
                   </div>
                 </div>
               ) : null}
+
+              {signalActions.map((action, i) => (
+                <SignalProcessor key={`signal-${i}`} action={action} />
+              ))}
 
               {tradeProposal ? (
                 <div className="assistant-row" style={{ paddingLeft: '0' }}>

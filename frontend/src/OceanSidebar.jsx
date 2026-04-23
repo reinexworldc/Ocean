@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import './OceanSidebar.css';
 
 function ShortcutCommandIcon() {
@@ -15,6 +16,19 @@ function ShortcutCommandIcon() {
         fill="currentColor"
       />
     </svg>
+  );
+}
+
+function ShortcutBadge({ letter }) {
+  return (
+    <div className="ocean-sidebar__shortcut" aria-hidden="true">
+      <span className="ocean-sidebar__shortcutBox">
+        <ShortcutCommandIcon />
+      </span>
+      <span className="ocean-sidebar__shortcutBox ocean-sidebar__shortcutBox--text">
+        {letter}
+      </span>
+    </div>
   );
 }
 
@@ -59,27 +73,34 @@ function OceanSidebar({
   isAuthenticated,
   isCreatingChat,
 }) {
+  const [allChatsOpen, setAllChatsOpen] = useState(true);
+
   return (
     <aside className="ocean-sidebar" aria-label="Recent chats">
-      <div className="ocean-sidebar__header">
-        <button
-          type="button"
-          className="ocean-sidebar__newChatButton"
-          onClick={() => {
-            void onCreateChat();
-          }}
-          disabled={!isAuthenticated || isCreatingChat}
-        >
-          {isCreatingChat ? 'CREATING...' : 'NEW CHAT'}
-        </button>
+      <div className="ocean-sidebar__actions">
+        <div className="ocean-sidebar__actionRow">
+          <button
+            type="button"
+            className="ocean-sidebar__actionButton"
+            disabled={!isAuthenticated}
+            aria-label="New folder"
+          >
+            NEW FOLDER +
+          </button>
+          <ShortcutBadge letter="N" />
+        </div>
 
-        <div className="ocean-sidebar__shortcuts" aria-hidden="true">
-          <span className="ocean-sidebar__shortcutBox">
-            <ShortcutCommandIcon />
-          </span>
-          <span className="ocean-sidebar__shortcutBox ocean-sidebar__shortcutBox--text">
-            N
-          </span>
+        <div className="ocean-sidebar__actionRow">
+          <button
+            type="button"
+            className="ocean-sidebar__actionButton"
+            onClick={() => { void onCreateChat(); }}
+            disabled={!isAuthenticated || isCreatingChat}
+            aria-label="New chat"
+          >
+            {isCreatingChat ? 'CREATING...' : 'NEW CHAT +'}
+          </button>
+          <ShortcutBadge letter="O" />
         </div>
       </div>
 
@@ -100,39 +121,73 @@ function OceanSidebar({
           </div>
         ) : null}
 
-        {isAuthenticated && chatsStatus !== 'loading' && chatsStatus !== 'error' && chats.length === 0 ? (
-          <div className="ocean-sidebar__emptyState">No chats yet. Start a new conversation.</div>
-        ) : null}
+        {isAuthenticated && chatsStatus !== 'loading' && chatsStatus !== 'error' ? (
+          <div className="ocean-sidebar__folder">
+            <button
+              type="button"
+              className="ocean-sidebar__folderHeader"
+              onClick={() => setAllChatsOpen((v) => !v)}
+              aria-expanded={allChatsOpen}
+            >
+              <span className="ocean-sidebar__folderIcon">
+                {allChatsOpen ? '▾' : '▸'}
+              </span>
+              <span className="ocean-sidebar__folderName">ALL CHATS</span>
+              {chats.length > 0 ? (
+                <span className="ocean-sidebar__folderCount">{chats.length}</span>
+              ) : null}
+            </button>
 
-        {chats.map((chat) => (
-          <div
-            key={chat.id}
-            className={`ocean-sidebar__item${
-              chat.id === selectedChatId ? ' ocean-sidebar__item--active' : ''
-            }`}
-          >
-            <button
-              type="button"
-              className="ocean-sidebar__itemButton"
-              onClick={() => onSelectChat(chat.id)}
-              aria-pressed={chat.id === selectedChatId}
-            >
-              <span className="ocean-sidebar__itemTitle">{chat.title}</span>
-              <span className="ocean-sidebar__itemTime">{formatRelativeTime(chat.updatedAt)}</span>
-            </button>
-            <button
-              type="button"
-              className="ocean-sidebar__deleteButton"
-              onClick={(e) => {
-                e.stopPropagation();
-                void onDeleteChat(chat.id);
-              }}
-              aria-label={`Delete chat "${chat.title}"`}
-            >
-              ×
-            </button>
+            {allChatsOpen ? (
+              <div className="ocean-sidebar__folderItems">
+                {chats.length === 0 ? (
+                  <div className="ocean-sidebar__treeItem">
+                    <div className="ocean-sidebar__treeLine" />
+                    <span className="ocean-sidebar__emptyState ocean-sidebar__emptyState--tree">
+                      No chats yet.
+                    </span>
+                  </div>
+                ) : null}
+
+                {chats.map((chat, index) => {
+                  const isLast = index === chats.length - 1;
+                  return (
+                    <div
+                      key={chat.id}
+                      className={`ocean-sidebar__treeItem${
+                        chat.id === selectedChatId ? ' ocean-sidebar__treeItem--active' : ''
+                      }`}
+                    >
+                      <div className={`ocean-sidebar__treeLine${isLast ? ' ocean-sidebar__treeLine--last' : ''}`} />
+                      <button
+                        type="button"
+                        className="ocean-sidebar__itemButton"
+                        onClick={() => onSelectChat(chat.id)}
+                        aria-pressed={chat.id === selectedChatId}
+                      >
+                        <span className="ocean-sidebar__itemTitle">
+                          .../{chat.title}
+                        </span>
+                        <span className="ocean-sidebar__itemTime">{formatRelativeTime(chat.updatedAt)}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="ocean-sidebar__deleteButton"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void onDeleteChat(chat.id);
+                        }}
+                        aria-label={`Delete chat "${chat.title}"`}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
           </div>
-        ))}
+        ) : null}
       </div>
     </aside>
   );
