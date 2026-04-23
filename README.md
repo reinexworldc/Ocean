@@ -26,44 +26,39 @@ Each of Ocean's API endpoints charges a precise fraction-of-a-cent fee proportio
 
 ## Architecture
 
-```mermaid
-flowchart TD
-    subgraph Frontend ["🖥️ React Frontend"]
-        U[User / Wallet\nSIWE auth]
-        CP[Chat Panel\nSSE stream]
-        AAP[Agent Actions Panel\nRPC cost breakdown + tx links]
-        TC[Trade Card\nconfirm flow]
-    end
-
-    subgraph Backend ["🧠 NestJS Backend"]
-        CS[Chat Agent Service\nGemini planner]
-        PS[Payments Service\nx402 client]
-        TS[Token Service\nviem on-chain reads]
-        WS[Circle Wallet Service\ndeveloper-controlled wallets]
-        TR[Trade Service\nERC-20 transfers]
-    end
-
-    subgraph ArcL1 ["⛓️ Arc L1 (Chain ID 5042002)"]
-        FW[Facilitator\nx402.org]
-        USDC[USDC\nnative payment token]
-        ERC[ERC-20 Tokens\nMOON · REKT · CRAB]
-        SCAN[ArcScan Explorer]
-    end
-
-    U -->|chat message| CP
-    CP -->|POST stream-init| CS
-    CS -->|plan actions| CS
-    CS -->|callPaidJsonEndpoint| PS
-    PS -->|HTTP 402 challenge| TS
-    PS -->|signTypedData EIP-712| WS
-    WS -->|Circle API| USDC
-    USDC -->|TransferWithAuthorization| FW
-    FW -->|settlement tx hash| PS
-    PS -->|paid data response| CS
-    CS -->|Gemini reply stream| CP
-    CP --> AAP
-    CP --> TC
-    PS -->|tx hash| SCAN
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        React Frontend                           │
+│  Wallet (SIWE) · Chat Panel (SSE) · Agent Actions · Trade Card │
+└────────────────────────────┬────────────────────────────────────┘
+                             │ user message
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                       NestJS Backend                            │
+│                                                                 │
+│  1. Chat Agent Service  ──►  Gemini (plan actions)             │
+│         │                                                       │
+│         │  for each planned action                              │
+│         ▼                                                       │
+│  2. Payments Service    ──►  GET /token/:id/...                │
+│         │                    ↳ HTTP 402 returned                │
+│         │                                                       │
+│         ▼                                                       │
+│  3. Circle Wallet        ──►  signTypedData (EIP-712)          │
+│         │                                                       │
+│         ▼                                                       │
+│  4. x402 Facilitator     ──►  Arc L1: USDC settled             │
+│         │                     tx hash returned                  │
+│         │                                                       │
+│         ▼                                                       │
+│  5. Token / Trade Service ─►  viem RPC reads on Arc            │
+│         │                     data returned + RPC cost log      │
+│         ▼                                                       │
+│  6. Gemini (reply)       ──►  stream back to frontend          │
+└─────────────────────────────────────────────────────────────────┘
+                             │ settlement tx hash
+                             ▼
+                    ArcScan (testnet.arcscan.app)
 ```
 
 ---
