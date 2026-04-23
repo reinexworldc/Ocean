@@ -108,9 +108,9 @@ const STEP_PHASES = new Set([
 ]);
 
 const STREAM_RETRY_POLICY = {
-  maxRetries: 15,
-  maxTotalRetryMs: 180_000,
   defaultRetryMs: 1500,
+  burstRetries: 10,
+  longRetryMs: 15_000,
 };
 
 function shouldAppendStep(existingSteps, nextStep) {
@@ -342,7 +342,7 @@ export function useChats({ enabled = true } = {}) {
           let retryTimer = null;
           let es = null;
           let clearAssistantOnNextToken = false;
-          const retryStartedAt = Date.now();
+          let isInLongRetryMode = false;
 
           const closeStream = () => {
             if (retryTimer) {
@@ -375,22 +375,39 @@ export function useChats({ enabled = true } = {}) {
           };
 
           const scheduleRetry = (ms) => {
-            const elapsed = Date.now() - retryStartedAt;
-            if (
-              retryCount >= STREAM_RETRY_POLICY.maxRetries ||
-              elapsed >= STREAM_RETRY_POLICY.maxTotalRetryMs
-            ) {
-              failWithMessage(
-                'Upstream providers are temporarily unavailable. Please try again in a moment.',
-              );
-              return;
+            const shouldEnterLongRetryMode =
+              retryCount >= STREAM_RETRY_POLICY.burstRetries;
+
+            // After a burst of retries, keep the request alive but slow down aggressively
+            // instead of failing the chat. This avoids "dead-end" UX during upstream outages.
+            if (shouldEnterLongRetryMode) {
+              if (!isInLongRetryMode) {
+                isInLongRetryMode = true;
+                setStreamingStateByMessageId((current) => {
+                  const old = current[tempAssistantId] ?? { steps: [] };
+                  const nextStep = buildStepFromEvent({
+                    phase: 'retrying',
+                    text: 'Providers unavailable — waiting to resume…',
+                  });
+                  return {
+                    ...current,
+                    [tempAssistantId]: {
+                      phase: 'retrying',
+                      steps: [...(old.steps ?? []), nextStep],
+                    },
+                  };
+                });
+              }
             }
 
             retryCount += 1;
-            const delay = Math.max(
-              250,
-              Number.isFinite(ms) ? ms : STREAM_RETRY_POLICY.defaultRetryMs,
-            );
+
+            const delay = shouldEnterLongRetryMode
+              ? STREAM_RETRY_POLICY.longRetryMs
+              : Math.max(
+                  250,
+                  Number.isFinite(ms) ? ms : STREAM_RETRY_POLICY.defaultRetryMs,
+                );
 
             // Keep a single, stable assistant bubble in UI while retrying.
             // We only clear its content right before the next token arrives to

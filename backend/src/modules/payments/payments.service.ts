@@ -10,15 +10,14 @@ import { registerBatchScheme } from "@circle-fin/x402-batching/client";
 import { x402Client } from "@x402/core/client";
 import { x402HTTPClient } from "@x402/core/http";
 import { ExactEvmScheme, authorizationTypes, toClientEvmSigner } from "@x402/evm";
-import { createPublicClient, http, verifyTypedData } from "viem";
+import { createPublicClient, verifyTypedData } from "viem";
 import { Prisma } from "../../generated/prisma/client.js";
 import { TransactionProvider, TransactionStatus } from "../../generated/prisma/enums.js";
 import { PrismaService } from "../../prisma/prisma.service.js";
 import { DEFAULT_X402_NETWORK } from "../../common/x402/x402.constants.js";
 import { CircleWalletService } from "../circle-wallet/circle-wallet.service.js";
 import { createCircleWalletClient } from "../circle-wallet/circle-wallet.client.js";
-
-const DEFAULT_ARC_TESTNET_RPC_URL = "https://rpc.testnet.arc.network";
+import { arcHttpTransport, getArcTestnetRpcUrl } from "../../common/rpc/arc-rpc.transport.js";
 
 type HttpMethod = "GET" | "POST";
 
@@ -45,7 +44,7 @@ export type PaidApiRequestResult<T> = {
 @Injectable()
 export class PaymentsService {
   private readonly publicClient = createPublicClient({
-    transport: http(process.env.ARC_TESTNET_RPC_URL ?? DEFAULT_ARC_TESTNET_RPC_URL),
+    transport: arcHttpTransport(getArcTestnetRpcUrl()),
   });
 
   constructor(

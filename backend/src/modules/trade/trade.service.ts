@@ -11,7 +11,6 @@ import {
   createWalletClient,
   formatUnits,
   getAddress,
-  http,
   parseAbi,
   parseUnits,
 } from "viem";
@@ -19,8 +18,8 @@ import { privateKeyToAccount } from "viem/accounts";
 import { TradeDirection, TradeStatus } from "../../generated/prisma/enums.js";
 import { PrismaService } from "../../prisma/prisma.service.js";
 import { type TradeRequestDto } from "./dto/trade-request.dto.js";
+import { arcHttpTransport, getArcTestnetRpcUrl } from "../../common/rpc/arc-rpc.transport.js";
 
-const DEFAULT_ARC_TESTNET_RPC_URL = "https://rpc.testnet.arc.network";
 export const TRADE_SERVICE_FEE_USD = "0.05";
 
 const erc20Abi = parseAbi([
@@ -81,7 +80,7 @@ export type RecordTradeInput = {
 @Injectable()
 export class TradeService {
   private readonly publicClient = createPublicClient({
-    transport: http(process.env.ARC_TESTNET_RPC_URL ?? DEFAULT_ARC_TESTNET_RPC_URL),
+    transport: arcHttpTransport(getArcTestnetRpcUrl()),
   });
 
   constructor(private readonly prisma: PrismaService) {}
@@ -98,7 +97,7 @@ export class TradeService {
     const account = this.getDeployerAccount();
     const walletClient = createWalletClient({
       account,
-      transport: http(process.env.ARC_TESTNET_RPC_URL ?? DEFAULT_ARC_TESTNET_RPC_URL),
+      transport: arcHttpTransport(getArcTestnetRpcUrl()),
     });
 
     const deployerBalance = await this.publicClient.readContract({

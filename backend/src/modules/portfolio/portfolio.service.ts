@@ -5,14 +5,13 @@ import {
   createPublicClient,
   formatUnits,
   getAddress,
-  http,
   isAddress,
   parseAbi,
   parseAbiItem,
   zeroAddress,
 } from "viem";
+import { arcHttpTransport, getArcTestnetRpcUrl } from "../../common/rpc/arc-rpc.transport.js";
 
-const DEFAULT_ARC_TESTNET_RPC_URL = "https://rpc.testnet.arc.network";
 const LOG_BLOCK_RANGE = 10_000n;
 
 type HistoryPeriod = "1h" | "24h" | "7d" | "30d";
@@ -105,7 +104,7 @@ const transferEvent = parseAbiItem(
 @Injectable()
 export class PortfolioService {
   private readonly publicClient = createPublicClient({
-    transport: http(process.env.ARC_TESTNET_RPC_URL ?? DEFAULT_ARC_TESTNET_RPC_URL),
+    transport: arcHttpTransport(getArcTestnetRpcUrl()),
   });
 
   async getWalletPortfolio(walletAddress: string) {

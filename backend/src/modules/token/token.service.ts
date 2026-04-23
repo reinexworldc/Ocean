@@ -10,15 +10,14 @@ import {
   createPublicClient,
   formatUnits,
   getAddress,
-  http,
   isAddress,
   parseAbi,
   parseAbiItem,
   zeroAddress,
 } from "viem";
 import { type GetTokenHistoryQueryDto } from "./dto/get-token-history-query.dto.js";
+import { arcHttpTransport, getArcTestnetRpcUrl } from "../../common/rpc/arc-rpc.transport.js";
 
-const DEFAULT_ARC_TESTNET_RPC_URL = "https://rpc.testnet.arc.network";
 const DEFAULT_HISTORY_PERIOD = "24h";
 const HISTORY_PERIODS = ["1h", "24h", "7d", "30d"] as const;
 const LOG_BLOCK_RANGE = 10_000n;
@@ -95,7 +94,7 @@ function isHistoryPeriod(value: string): value is HistoryPeriod {
 @Injectable()
 export class TokenService {
   private readonly publicClient = createPublicClient({
-    transport: http(process.env.ARC_TESTNET_RPC_URL ?? DEFAULT_ARC_TESTNET_RPC_URL),
+    transport: arcHttpTransport(getArcTestnetRpcUrl()),
   });
 
   async getTokenById(tokenId: string) {

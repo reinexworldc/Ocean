@@ -33,6 +33,11 @@ export type ChatAgentResult = {
 
 @Injectable()
 export class ChatAgentService {
+  private readonly maxToolConcurrency = Math.max(
+    1,
+    Number(process.env.AGENT_TOOL_MAX_CONCURRENCY ?? 2),
+  );
+
   constructor(
     @Inject(GeminiService) private readonly geminiService: GeminiService,
     @Inject(PaymentsService) private readonly paymentsService: PaymentsService,
@@ -391,8 +396,7 @@ export class ChatAgentService {
     const notifiers: Array<() => void> = [];
     let firstError: unknown = null;
 
-    const allSettled = Promise.allSettled(
-      actionsToExecute.map(async (action) => {
+    const allDone = this.mapWithConcurrency(actionsToExecute, this.maxToolConcurrency, async (action) => {
         const { label, tokenId, tokenSuffix } = this.actionMeta(action);
         let result: ExecutedAgentAction;
         try {
@@ -414,8 +418,7 @@ export class ChatAgentService {
           ...(tokenId ? { tokenId } : {}),
         });
         notifiers.shift()?.();
-      }),
-    );
+      });
 
     let yielded = 0;
     while (yielded < totalExpected) {
@@ -427,7 +430,7 @@ export class ChatAgentService {
       }
     }
 
-    await allSettled;
+    await allDone;
 
     if (firstError !== null) {
       throw firstError;
@@ -456,9 +459,31 @@ export class ChatAgentService {
     circleWalletAddress: string | null,
     actions: PlannedPremiumAction[],
   ): Promise<ExecutedAgentAction[]> {
-    return Promise.all(
-      actions.map((action) => this.executeAction(userId, chatId, circleWalletAddress, action)),
+    return this.mapWithConcurrency(actions, this.maxToolConcurrency, (action) =>
+      this.executeAction(userId, chatId, circleWalletAddress, action),
     );
+  }
+
+  private async mapWithConcurrency<T, R>(
+    items: T[],
+    concurrency: number,
+    fn: (item: T) => Promise<R>,
+  ): Promise<R[]> {
+    if (items.length === 0) return [];
+    const results = new Array<R>(items.length);
+    let nextIndex = 0;
+
+    const workers = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+      while (true) {
+        const index = nextIndex;
+        nextIndex += 1;
+        if (index >= items.length) return;
+        results[index] = await fn(items[index]!);
+      }
+    });
+
+    await Promise.all(workers);
+    return results;
   }
 
   /** Returns true when the upstream API responded with 404 (token not found). */
