@@ -17,10 +17,11 @@ import {
 } from "viem";
 import { type GetTokenHistoryQueryDto } from "./dto/get-token-history-query.dto.js";
 import { arcHttpTransport, getArcTestnetRpcUrl } from "../../common/rpc/arc-rpc.transport.js";
+import { RpcTracker } from "./rpc-tracker.js";
 
 const DEFAULT_HISTORY_PERIOD = "24h";
 const HISTORY_PERIODS = ["1h", "24h", "7d", "30d"] as const;
-const LOG_BLOCK_RANGE = 10_000n;
+const RECENT_BLOCKS_WINDOW = 2n;
 
 type HistoryPeriod = (typeof HISTORY_PERIODS)[number];
 
@@ -97,11 +98,106 @@ export class TokenService {
     transport: arcHttpTransport(getArcTestnetRpcUrl()),
   });
 
+  /**
+   * Block timestamps are immutable once mined. Caching them avoids
+   * redundant eth_getBlockByNumber calls across requests and within a single
+   * /history response (buildHistoryPointsWithActivity + getLastActivityTimestamp
+   * both need block timestamps for the same blocks).
+   */
+  private readonly blockTimestampCache = new Map<bigint, number>();
+
+  async getTokenProfile(tokenId: string) {
+    const dataset = await this.readTokenDataset();
+    const token = this.resolveToken(dataset, tokenId);
+
+    return {
+      id: token.symbol,
+      network: "Arc Testnet",
+      address: getAddress(token.address),
+      explorerUrl: this.getExplorerUrl(token.address),
+      description: token.description,
+      launchDate: token.launchDate,
+      current: token.current,
+      sentiment: token.sentiment,
+      analysis: token.analysis,
+    };
+  }
+
+  async getTokenErc20(tokenId: string) {
+    const dataset = await this.readTokenDataset();
+    const token = this.resolveToken(dataset, tokenId);
+    const tracker = new RpcTracker();
+    const onChainData = await this.withRpcErrorMapping(() =>
+      this.fetchOnChainErc20Details(token.address, tracker),
+    );
+
+    return {
+      id: token.symbol,
+      network: "Arc Testnet",
+      address: onChainData.address,
+      explorerUrl: this.getExplorerUrl(onChainData.address),
+      name: onChainData.name,
+      symbol: onChainData.symbol,
+      decimals: onChainData.decimals,
+      totalSupply: {
+        raw: onChainData.totalSupply.toString(),
+        formatted: formatUnits(onChainData.totalSupply, onChainData.decimals),
+      },
+      rpcBreakdown: tracker.breakdown,
+      rpcTotalCost: tracker.totalCostFormatted,
+    };
+  }
+
+  async getTokenTransfers(tokenId: string) {
+    const dataset = await this.readTokenDataset();
+    const token = this.resolveToken(dataset, tokenId);
+    const tracker = new RpcTracker();
+    const onChainData = await this.withRpcErrorMapping(() =>
+      this.fetchOnChainTransfers(token.address, tracker),
+    );
+
+    return {
+      id: token.symbol,
+      network: "Arc Testnet",
+      address: onChainData.address,
+      explorerUrl: this.getExplorerUrl(onChainData.address),
+      transfers: {
+        total: onChainData.transfers.length,
+        items: onChainData.transfers,
+      },
+      rpcBreakdown: tracker.breakdown,
+      rpcTotalCost: tracker.totalCostFormatted,
+    };
+  }
+
+  async getTokenHolders(tokenId: string) {
+    const dataset = await this.readTokenDataset();
+    const token = this.resolveToken(dataset, tokenId);
+    const tracker = new RpcTracker();
+    const onChainData = await this.withRpcErrorMapping(() =>
+      this.fetchOnChainHolders(token.address, tracker),
+    );
+
+    return {
+      id: token.symbol,
+      network: "Arc Testnet",
+      address: onChainData.address,
+      explorerUrl: this.getExplorerUrl(onChainData.address),
+      holders: {
+        total: onChainData.holders.length,
+        items: onChainData.holders,
+      },
+      rpcBreakdown: tracker.breakdown,
+      rpcTotalCost: tracker.totalCostFormatted,
+    };
+  }
+
   async getTokenById(tokenId: string) {
     const dataset = await this.readTokenDataset();
     const token = this.resolveToken(dataset, tokenId);
+    const tracker = new RpcTracker();
     const onChainData = await this.withRpcErrorMapping(() =>
-      this.fetchOnChainTokenDetails(token.address),
+      this.fetchOnChainTokenDetails(token.address, tracker),
     );
 
     return {
@@ -132,6 +228,8 @@ export class TokenService {
         total: onChainData.transfers.length,
         items: onChainData.transfers,
       },
+      rpcBreakdown: tracker.breakdown,
+      rpcTotalCost: tracker.totalCostFormatted,
     };
   }
 
@@ -146,14 +244,16 @@ export class TokenService {
       );
     }
 
+    const tracker = new RpcTracker();
     const transferLogs = await this.withRpcErrorMapping(() =>
-      this.getTransferLogs(getAddress(token.address)),
+      this.getTransferLogs(getAddress(token.address), tracker),
     );
     const points = await this.buildHistoryPointsWithActivity(
       token.history[requestedPeriod],
       transferLogs,
       token.decimals,
       requestedPeriod,
+      tracker,
     );
 
     return {
@@ -178,9 +278,11 @@ export class TokenService {
             return addresses;
           }),
         ).size,
-        lastActivityAt: await this.getLastActivityTimestamp(transferLogs),
+        lastActivityAt: await this.getLastActivityTimestamp(transferLogs, tracker),
       },
       points,
+      rpcBreakdown: tracker.breakdown,
+      rpcTotalCost: tracker.totalCostFormatted,
     };
   }
 
@@ -220,30 +322,17 @@ export class TokenService {
     return matchedToken;
   }
 
-  private async fetchOnChainTokenDetails(tokenAddress: string) {
+  private async fetchOnChainTokenDetails(tokenAddress: string, tracker?: RpcTracker) {
     const address = getAddress(tokenAddress);
+    const track = <T>(label: string, key: Parameters<RpcTracker["track"]>[1], p: Promise<T>) =>
+      tracker ? tracker.track(label, key, p) : p;
+
     const [name, symbol, decimals, totalSupply, transferLogs] = await Promise.all([
-      this.publicClient.readContract({
-        address,
-        abi: erc20Abi,
-        functionName: "name",
-      }),
-      this.publicClient.readContract({
-        address,
-        abi: erc20Abi,
-        functionName: "symbol",
-      }),
-      this.publicClient.readContract({
-        address,
-        abi: erc20Abi,
-        functionName: "decimals",
-      }),
-      this.publicClient.readContract({
-        address,
-        abi: erc20Abi,
-        functionName: "totalSupply",
-      }),
-      this.getTransferLogs(address),
+      track("name()", "name", this.publicClient.readContract({ address, abi: erc20Abi, functionName: "name" })),
+      track("symbol()", "symbol", this.publicClient.readContract({ address, abi: erc20Abi, functionName: "symbol" })),
+      track("decimals()", "decimals", this.publicClient.readContract({ address, abi: erc20Abi, functionName: "decimals" })),
+      track("totalSupply()", "totalSupply", this.publicClient.readContract({ address, abi: erc20Abi, functionName: "totalSupply" })),
+      this.getTransferLogs(address, tracker),
     ]);
 
     const participantAddresses = new Set<`0x${string}`>();
@@ -263,12 +352,11 @@ export class TokenService {
 
     const holdersWithBalances = await Promise.all(
       [...participantAddresses].map(async (holderAddress) => {
-        const balance = await this.publicClient.readContract({
-          address,
-          abi: erc20Abi,
-          functionName: "balanceOf",
-          args: [holderAddress],
-        });
+        const balance = await track(
+          `balanceOf(${holderAddress.slice(0, 10)}…)`,
+          "balanceOf",
+          this.publicClient.readContract({ address, abi: erc20Abi, functionName: "balanceOf", args: [holderAddress] }),
+        );
 
         return {
           address: holderAddress,
@@ -309,6 +397,88 @@ export class TokenService {
     };
   }
 
+  private async fetchOnChainErc20Details(tokenAddress: string, tracker?: RpcTracker) {
+    const address = getAddress(tokenAddress);
+    const track = <T>(label: string, key: Parameters<RpcTracker["track"]>[1], p: Promise<T>) =>
+      tracker ? tracker.track(label, key, p) : p;
+
+    const [name, symbol, decimals, totalSupply] = await Promise.all([
+      track("name()", "name", this.publicClient.readContract({ address, abi: erc20Abi, functionName: "name" })),
+      track("symbol()", "symbol", this.publicClient.readContract({ address, abi: erc20Abi, functionName: "symbol" })),
+      track("decimals()", "decimals", this.publicClient.readContract({ address, abi: erc20Abi, functionName: "decimals" })),
+      track("totalSupply()", "totalSupply", this.publicClient.readContract({ address, abi: erc20Abi, functionName: "totalSupply" })),
+    ]);
+
+    return { address, name, symbol, decimals, totalSupply };
+  }
+
+  private async fetchOnChainTransfers(tokenAddress: string, tracker?: RpcTracker) {
+    const address = getAddress(tokenAddress);
+    const track = <T>(label: string, key: Parameters<RpcTracker["track"]>[1], p: Promise<T>) =>
+      tracker ? tracker.track(label, key, p) : p;
+
+    const [decimals, transferLogs] = await Promise.all([
+      track("decimals()", "decimals", this.publicClient.readContract({ address, abi: erc20Abi, functionName: "decimals" })),
+      this.getTransferLogs(address, tracker),
+    ]);
+
+    const transfers = transferLogs
+      .map((log) => ({
+        transactionHash: log.transactionHash,
+        blockNumber: log.blockNumber?.toString() ?? null,
+        from: log.args.from ? getAddress(log.args.from) : zeroAddress,
+        to: log.args.to ? getAddress(log.args.to) : zeroAddress,
+        value: (log.args.value ?? 0n).toString(),
+        valueFormatted: formatUnits(log.args.value ?? 0n, decimals),
+      }))
+      .reverse();
+
+    return { address, decimals, transfers };
+  }
+
+  private async fetchOnChainHolders(tokenAddress: string, tracker?: RpcTracker) {
+    const address = getAddress(tokenAddress);
+    const track = <T>(label: string, key: Parameters<RpcTracker["track"]>[1], p: Promise<T>) =>
+      tracker ? tracker.track(label, key, p) : p;
+
+    const [decimals, totalSupply, transferLogs] = await Promise.all([
+      track("decimals()", "decimals", this.publicClient.readContract({ address, abi: erc20Abi, functionName: "decimals" })),
+      track("totalSupply()", "totalSupply", this.publicClient.readContract({ address, abi: erc20Abi, functionName: "totalSupply" })),
+      this.getTransferLogs(address, tracker),
+    ]);
+
+    const participantAddresses = new Set<`0x${string}`>();
+    for (const log of transferLogs) {
+      const from = log.args.from;
+      const to = log.args.to;
+      if (from && from !== zeroAddress) participantAddresses.add(getAddress(from));
+      if (to && to !== zeroAddress) participantAddresses.add(getAddress(to));
+    }
+
+    const holdersWithBalances = await Promise.all(
+      [...participantAddresses].map(async (holderAddress) => {
+        const balance = await track(
+          `balanceOf(${holderAddress.slice(0, 10)}…)`,
+          "balanceOf",
+          this.publicClient.readContract({ address, abi: erc20Abi, functionName: "balanceOf", args: [holderAddress] }),
+        );
+        return { address: holderAddress, balance };
+      }),
+    );
+
+    const holders = holdersWithBalances
+      .filter(({ balance }) => balance > 0n)
+      .sort((left, right) => (left.balance === right.balance ? 0 : left.balance > right.balance ? -1 : 1))
+      .map<HolderBalance>(({ address: holderAddress, balance }) => ({
+        address: holderAddress,
+        balance: balance.toString(),
+        balanceFormatted: formatUnits(balance, decimals),
+        shareOfSupply: totalSupply === 0n ? 0 : Number((balance * 10_000n) / totalSupply) / 100,
+      }));
+
+    return { address, decimals, totalSupply, holders };
+  }
+
   private getExplorerUrl(address: string) {
     return `https://testnet.arcscan.app/address/${address}`;
   }
@@ -318,12 +488,13 @@ export class TokenService {
     transferLogs: Awaited<ReturnType<TokenService["getTransferLogs"]>>,
     decimals: number,
     period: HistoryPeriod,
+    tracker?: RpcTracker,
   ): Promise<TokenHistoryActivityPoint[]> {
     if (historyPoints.length === 0) {
       return [];
     }
 
-    const blockTimestamps = await this.getBlockTimestampsByNumber(transferLogs);
+    const blockTimestamps = await this.getBlockTimestampsByNumber(transferLogs, tracker);
     const sortedPoints = [...historyPoints].sort(
       (left, right) => new Date(left.timestamp).getTime() - new Date(right.timestamp).getTime(),
     );
@@ -383,30 +554,34 @@ export class TokenService {
 
   private async getBlockTimestampsByNumber(
     transferLogs: Awaited<ReturnType<TokenService["getTransferLogs"]>>,
+    tracker?: RpcTracker,
   ) {
     const blockNumbers = [
       ...new Set(
         transferLogs.map((log) => log.blockNumber).filter((blockNumber) => blockNumber !== null),
       ),
     ];
-    const blocks = await Promise.all(
-      blockNumbers.map(async (blockNumber) => ({
-        blockNumber,
-        timestampMs: Number(
-          (
-            await this.publicClient.getBlock({
-              blockNumber,
-            })
-          ).timestamp * 1000n,
-        ),
-      })),
+
+    const uncached = blockNumbers.filter((n) => !this.blockTimestampCache.has(n));
+
+    await Promise.all(
+      uncached.map(async (blockNumber) => {
+        const blockPromise = this.publicClient.getBlock({ blockNumber });
+        const block = tracker
+          ? await tracker.track(`eth_getBlockByNumber (${blockNumber})`, "getBlock", blockPromise)
+          : await blockPromise;
+        this.blockTimestampCache.set(blockNumber, Number(block.timestamp * 1000n));
+      }),
     );
 
-    return new Map(blocks.map(({ blockNumber, timestampMs }) => [blockNumber, timestampMs]));
+    return new Map(
+      blockNumbers.map((blockNumber) => [blockNumber, this.blockTimestampCache.get(blockNumber)!]),
+    );
   }
 
   private async getLastActivityTimestamp(
     transferLogs: Awaited<ReturnType<TokenService["getTransferLogs"]>>,
+    tracker?: RpcTracker,
   ) {
     const latestLog = [...transferLogs]
       .filter((log) => log.blockNumber !== null && log.blockNumber !== undefined)
@@ -418,11 +593,25 @@ export class TokenService {
       return null;
     }
 
-    const block = await this.publicClient.getBlock({
-      blockNumber: latestLog.blockNumber,
-    });
+    const blockNumber = latestLog.blockNumber;
 
-    return new Date(Number(block.timestamp * 1000n)).toISOString();
+    const cachedMs = this.blockTimestampCache.get(blockNumber);
+    if (cachedMs !== undefined) {
+      return new Date(cachedMs).toISOString();
+    }
+
+    const blockPromise = this.publicClient.getBlock({ blockNumber });
+    const block = tracker
+      ? await tracker.track(
+          `eth_getBlockByNumber (${blockNumber}, lastActivity)`,
+          "getBlock",
+          blockPromise,
+        )
+      : await blockPromise;
+
+    const timestampMs = Number(block.timestamp * 1000n);
+    this.blockTimestampCache.set(blockNumber, timestampMs);
+    return new Date(timestampMs).toISOString();
   }
 
   private getFallbackIntervalMs(period: HistoryPeriod) {
@@ -438,56 +627,19 @@ export class TokenService {
     }
   }
 
-  private async getTransferLogs(address: `0x${string}`) {
+  private async getTransferLogs(address: `0x${string}`, tracker?: RpcTracker) {
     const latestBlock = await this.publicClient.getBlockNumber();
-    const deploymentBlock = await this.findDeploymentBlock(address, latestBlock);
-    const logs = [];
+    const fromBlock = latestBlock >= RECENT_BLOCKS_WINDOW ? latestBlock - RECENT_BLOCKS_WINDOW + 1n : 0n;
 
-    for (
-      let fromBlock = deploymentBlock;
-      fromBlock <= latestBlock;
-      fromBlock += LOG_BLOCK_RANGE
-    ) {
-      const toBlock =
-        fromBlock + LOG_BLOCK_RANGE - 1n > latestBlock
-          ? latestBlock
-          : fromBlock + LOG_BLOCK_RANGE - 1n;
+    const label = `eth_getLogs (Transfer, blocks ${fromBlock}–${latestBlock})`;
+    const logsPromise = this.publicClient.getLogs({
+      address,
+      event: transferEvent,
+      fromBlock,
+      toBlock: latestBlock,
+    });
 
-      const batchLogs = await this.publicClient.getLogs({
-        address,
-        event: transferEvent,
-        fromBlock,
-        toBlock,
-      });
-
-      logs.push(...batchLogs);
-    }
-
-    return logs;
-  }
-
-  private async findDeploymentBlock(
-    address: `0x${string}`,
-    latestBlock: bigint,
-  ): Promise<bigint> {
-    let low = 0n;
-    let high = latestBlock;
-
-    while (low < high) {
-      const mid = low + (high - low) / 2n;
-      const code = await this.publicClient.getCode({
-        address,
-        blockNumber: mid,
-      });
-
-      if (code && code !== "0x") {
-        high = mid;
-      } else {
-        low = mid + 1n;
-      }
-    }
-
-    return low;
+    return tracker ? tracker.track(label, "getLogsBatch", logsPromise) : logsPromise;
   }
 
   private async withRpcErrorMapping<T>(fn: () => Promise<T>): Promise<T> {

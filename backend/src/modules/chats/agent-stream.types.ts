@@ -13,7 +13,15 @@ export type TradeProposal = {
 export type AgentStreamEvent =
   | { phase: "planning"; text: string }
   | { phase: "tool_executing"; text: string; tool: string; cost?: string; tokenId?: string }
-  | { phase: "tool_result"; text: string; tool: string; cost: string; tokenId?: string }
+  | {
+      phase: "tool_result";
+      text: string;
+      tool: string;
+      cost: string;
+      tokenId?: string;
+      txHash?: string;
+      txUrl?: string;
+    }
   /** Emitted when the agent self-detected a data anomaly and is investigating it. */
   | { phase: "anomaly_detected"; text: string; anomalies: string[] }
   /** Emitted when a model is unavailable and the agent transparently swaps to a fallback. */

@@ -11,7 +11,10 @@ import {
 
 const ACTION_LABELS = {
   get_market_overview: 'Market Overview',
-  get_token_details: 'Token Details',
+  get_token_profile: 'Token Profile',
+  get_token_erc20: 'Token Contract',
+  get_token_transfers: 'Token Transfers',
+  get_token_holders: 'Token Holders',
   get_token_history: 'Token History',
   get_wallet_portfolio: 'Wallet Portfolio',
 };
@@ -69,6 +72,8 @@ function buildStepFromEvent(data) {
         cost: data.cost,
         tool: data.tool,
         tokenId: data.tokenId ?? null,
+        txHash: data.txHash ?? null,
+        txUrl: data.txUrl ?? null,
         key: toolStepKey(data.tool, data.tokenId),
       };
     case 'anomaly_detected':

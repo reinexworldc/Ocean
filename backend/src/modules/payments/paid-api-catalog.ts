@@ -9,7 +9,19 @@ export type PaidApiAction =
       type: "get_market_overview";
     }
   | {
-      type: "get_token_details";
+      type: "get_token_profile";
+      tokenId: string;
+    }
+  | {
+      type: "get_token_erc20";
+      tokenId: string;
+    }
+  | {
+      type: "get_token_transfers";
+      tokenId: string;
+    }
+  | {
+      type: "get_token_holders";
       tokenId: string;
     }
   | {
@@ -29,16 +41,43 @@ export const paidApiCatalog = {
     method: "GET",
     buildPath: () => "/market",
   },
-  getTokenDetails: {
-    actionType: "get_token_details",
-    priceUsd: x402RouteConfigs.getTokenById.price,
-    description: x402RouteConfigs.getTokenById.description,
+  getTokenProfile: {
+    actionType: "get_token_profile",
+    priceUsd: x402RouteConfigs.getTokenProfile.price,
+    description: x402RouteConfigs.getTokenProfile.description,
     method: "GET",
-    buildPath: (tokenId: string) => `/token/${encodeURIComponent(tokenId)}`,
+    buildPath: (tokenId: string) => `/token/${encodeURIComponent(tokenId)}/profile`,
+  },
+  getTokenErc20: {
+    actionType: "get_token_erc20",
+    priceUsd: x402RouteConfigs.getTokenErc20.price,
+    description: x402RouteConfigs.getTokenErc20.description,
+    method: "GET",
+    buildPath: (tokenId: string) => `/token/${encodeURIComponent(tokenId)}/erc20`,
+  },
+  getTokenTransfers: {
+    actionType: "get_token_transfers",
+    // Dynamic price function — resolved by x402 guard at request time.
+    // The catalog uses a static minimum as a conservative estimate for agents.
+    priceUsd: "$0.01",
+    description: x402RouteConfigs.getTokenTransfers.description,
+    method: "GET",
+    buildPath: (tokenId: string) => `/token/${encodeURIComponent(tokenId)}/transfers`,
+  },
+  getTokenHolders: {
+    actionType: "get_token_holders",
+    // Dynamic price function — resolved by x402 guard at request time.
+    // The catalog uses a static minimum as a conservative estimate for agents.
+    priceUsd: "$0.01",
+    description: x402RouteConfigs.getTokenHolders.description,
+    method: "GET",
+    buildPath: (tokenId: string) => `/token/${encodeURIComponent(tokenId)}/holders`,
   },
   getTokenHistory: {
     actionType: "get_token_history",
-    priceUsd: x402RouteConfigs.getTokenHistory.price,
+    // Dynamic price function — resolved by x402 guard at request time.
+    // The catalog uses a static minimum as a conservative estimate for agents.
+    priceUsd: "$0.01",
     description: x402RouteConfigs.getTokenHistory.description,
     method: "GET",
     buildPath: (tokenId: string, period: HistoryPeriod) =>

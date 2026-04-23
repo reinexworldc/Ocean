@@ -7,7 +7,10 @@ import { type AgentStreamEvent, type TradeProposal } from "./agent-stream.types.
 
 const ACTION_LABELS: Record<string, string> = {
   get_market_overview: "Market Overview",
-  get_token_details: "Token Details",
+  get_token_profile: "Token Profile",
+  get_token_erc20: "Token Contract",
+  get_token_transfers: "Token Transfers",
+  get_token_holders: "Token Holders",
   get_token_history: "Token History",
   get_wallet_portfolio: "Wallet Portfolio",
 };
@@ -37,6 +40,10 @@ export class ChatAgentService {
     1,
     Number(process.env.AGENT_TOOL_MAX_CONCURRENCY ?? 2),
   );
+
+  private txUrlForArcTestnet(txHash: string) {
+    return `https://testnet.arcscan.app/tx/${txHash}`;
+  }
 
   constructor(
     @Inject(GeminiService) private readonly geminiService: GeminiService,
@@ -366,12 +373,15 @@ export class ChatAgentService {
       const cached = executedByKey.get(this.actionKey(action));
 
       if (cached) {
+        const txHash = cached.settlementTransaction?.trim?.() || "";
+        const txUrl = txHash ? this.txUrlForArcTestnet(txHash) : undefined;
         yield {
           phase: "tool_result",
           text: `${label}${tokenSuffix} (cached)`,
           tool: action.type,
           cost: cached.amountUsd,
           ...(tokenId ? { tokenId } : {}),
+          ...(txHash ? { txHash, txUrl } : {}),
         };
         continue;
       }
@@ -410,12 +420,15 @@ export class ChatAgentService {
           return;
         }
         collector.push(result);
+        const txHash = result.settlementTransaction?.trim?.() || "";
+        const txUrl = txHash ? this.txUrlForArcTestnet(txHash) : undefined;
         settled.push({
           phase: "tool_result",
           text: `${label}${tokenSuffix}`,
           tool: action.type,
           cost: result.amountUsd,
           ...(tokenId ? { tokenId } : {}),
+          ...(txHash ? { txHash, txUrl } : {}),
         });
         notifiers.shift()?.();
       });
@@ -441,8 +454,14 @@ export class ChatAgentService {
     switch (action.type) {
       case "get_market_overview":
         return paidApiCatalog.getMarketOverview.priceUsd;
-      case "get_token_details":
-        return paidApiCatalog.getTokenDetails.priceUsd;
+      case "get_token_profile":
+        return paidApiCatalog.getTokenProfile.priceUsd;
+      case "get_token_erc20":
+        return paidApiCatalog.getTokenErc20.priceUsd;
+      case "get_token_transfers":
+        return paidApiCatalog.getTokenTransfers.priceUsd;
+      case "get_token_holders":
+        return paidApiCatalog.getTokenHolders.priceUsd;
       case "get_token_history":
         return paidApiCatalog.getTokenHistory.priceUsd;
       case "get_wallet_portfolio":
@@ -568,16 +587,16 @@ export class ChatAgentService {
           summary: this.summarizeMarketOverview(response.data),
         };
       }
-      case "get_token_details": {
+      case "get_token_profile": {
         const tokenId = action.tokenId.toUpperCase();
-        const endpoint = paidApiCatalog.getTokenDetails.buildPath(tokenId);
+        const endpoint = paidApiCatalog.getTokenProfile.buildPath(tokenId);
         const response = await this.paymentsService.callPaidJsonEndpoint<Record<string, unknown>>({
           userId,
           chatId,
-          actionType: paidApiCatalog.getTokenDetails.actionType,
-          amountUsd: paidApiCatalog.getTokenDetails.priceUsd,
-          description: paidApiCatalog.getTokenDetails.description,
-          method: paidApiCatalog.getTokenDetails.method,
+          actionType: paidApiCatalog.getTokenProfile.actionType,
+          amountUsd: paidApiCatalog.getTokenProfile.priceUsd,
+          description: paidApiCatalog.getTokenProfile.description,
+          method: paidApiCatalog.getTokenProfile.method,
           path: endpoint,
         });
 
@@ -586,11 +605,86 @@ export class ChatAgentService {
           tokenId,
           period: undefined,
           endpoint,
-          amountUsd: paidApiCatalog.getTokenDetails.priceUsd,
+          amountUsd: paidApiCatalog.getTokenProfile.priceUsd,
           transactionId: response.transactionId,
           settlementTransaction: response.settlementTransaction,
           paymentNetwork: response.paymentNetwork,
-          summary: this.summarizeTokenDetails(response.data),
+          summary: response.data,
+        };
+      }
+      case "get_token_erc20": {
+        const tokenId = action.tokenId.toUpperCase();
+        const endpoint = paidApiCatalog.getTokenErc20.buildPath(tokenId);
+        const response = await this.paymentsService.callPaidJsonEndpoint<Record<string, unknown>>({
+          userId,
+          chatId,
+          actionType: paidApiCatalog.getTokenErc20.actionType,
+          amountUsd: paidApiCatalog.getTokenErc20.priceUsd,
+          description: paidApiCatalog.getTokenErc20.description,
+          method: paidApiCatalog.getTokenErc20.method,
+          path: endpoint,
+        });
+
+        return {
+          type: action.type,
+          tokenId,
+          period: undefined,
+          endpoint,
+          amountUsd: paidApiCatalog.getTokenErc20.priceUsd,
+          transactionId: response.transactionId,
+          settlementTransaction: response.settlementTransaction,
+          paymentNetwork: response.paymentNetwork,
+          summary: response.data,
+        };
+      }
+      case "get_token_transfers": {
+        const tokenId = action.tokenId.toUpperCase();
+        const endpoint = paidApiCatalog.getTokenTransfers.buildPath(tokenId);
+        const response = await this.paymentsService.callPaidJsonEndpoint<Record<string, unknown>>({
+          userId,
+          chatId,
+          actionType: paidApiCatalog.getTokenTransfers.actionType,
+          amountUsd: paidApiCatalog.getTokenTransfers.priceUsd,
+          description: paidApiCatalog.getTokenTransfers.description,
+          method: paidApiCatalog.getTokenTransfers.method,
+          path: endpoint,
+        });
+
+        return {
+          type: action.type,
+          tokenId,
+          period: undefined,
+          endpoint,
+          amountUsd: paidApiCatalog.getTokenTransfers.priceUsd,
+          transactionId: response.transactionId,
+          settlementTransaction: response.settlementTransaction,
+          paymentNetwork: response.paymentNetwork,
+          summary: response.data,
+        };
+      }
+      case "get_token_holders": {
+        const tokenId = action.tokenId.toUpperCase();
+        const endpoint = paidApiCatalog.getTokenHolders.buildPath(tokenId);
+        const response = await this.paymentsService.callPaidJsonEndpoint<Record<string, unknown>>({
+          userId,
+          chatId,
+          actionType: paidApiCatalog.getTokenHolders.actionType,
+          amountUsd: paidApiCatalog.getTokenHolders.priceUsd,
+          description: paidApiCatalog.getTokenHolders.description,
+          method: paidApiCatalog.getTokenHolders.method,
+          path: endpoint,
+        });
+
+        return {
+          type: action.type,
+          tokenId,
+          period: undefined,
+          endpoint,
+          amountUsd: paidApiCatalog.getTokenHolders.priceUsd,
+          transactionId: response.transactionId,
+          settlementTransaction: response.settlementTransaction,
+          paymentNetwork: response.paymentNetwork,
+          summary: response.data,
         };
       }
       case "get_token_history": {
@@ -683,20 +777,7 @@ export class ChatAgentService {
     };
   }
 
-  private summarizeTokenDetails(payload: Record<string, unknown>) {
-    return {
-      id: payload.id,
-      symbol: payload.symbol,
-      name: payload.name,
-      network: payload.network,
-      address: payload.address,
-      current: payload.current,
-      sentiment: payload.sentiment,
-      analysis: payload.analysis,
-      holders: this.pickObjectFields(this.asRecord(payload.holders), ["total"]),
-      transfers: this.pickObjectFields(this.asRecord(payload.transfers), ["total"]),
-    };
-  }
+  // Token detail calls are now split; keep raw payloads as summaries.
 
   private summarizeTokenHistory(payload: Record<string, unknown>) {
     const points = this.asArray(payload.points);

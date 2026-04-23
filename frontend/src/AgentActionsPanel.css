@@ -74,10 +74,48 @@
 
 .agent-actions-item {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  flex-direction: column;
   padding: 2px 0;
+}
+
+.agent-actions-item-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Expand toggle chevron */
+.agent-actions-item-expand {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  cursor: pointer;
+  color: #999;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.agent-actions-item-expand:hover {
+  color: #555;
+}
+
+.agent-actions-item-expand--open {
+  transform: rotate(180deg);
+  color: #555;
+}
+
+.agent-actions-item-expand svg {
+  display: block;
+}
+
+.agent-actions-item-expand-placeholder {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
 }
 
 .agent-actions-item-label {
@@ -86,6 +124,21 @@
   font-size: 11px;
   line-height: 15px;
   color: #737373;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-actions-item-token {
+  font-weight: 600;
+  color: #555;
+  background: #f0f0f0;
+  border-radius: 4px;
+  padding: 0 4px;
+  font-size: 10px;
+  flex-shrink: 0;
 }
 
 .agent-actions-item-price {
@@ -94,5 +147,85 @@
   font-size: 11px;
   line-height: 15px;
   color: #737373;
+  white-space: nowrap;
+}
+
+.agent-actions-item-tx {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  line-height: 15px;
+  color: #4f46e5;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.agent-actions-item-tx:hover {
+  text-decoration: underline;
+}
+
+/* RPC breakdown sub-list */
+.agent-actions-rpc-list {
+  list-style: none;
+  margin: 4px 0 4px 20px;
+  padding: 0 0 0 8px;
+  border-left: 1.5px solid #e5e5e5;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.agent-actions-rpc-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 1px 0;
+}
+
+.agent-actions-rpc-label {
+  font-family: 'JetBrains Mono', 'Fira Mono', 'Courier New', monospace;
+  font-size: 10px;
+  line-height: 14px;
+  color: #888;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.agent-actions-rpc-cost {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 10px;
+  line-height: 14px;
+  color: #aaa;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.agent-actions-rpc-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 0 1px;
+  border-top: 1px solid #ebebeb;
+  margin-top: 2px;
+}
+
+.agent-actions-rpc-total span:first-child {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: #666;
+}
+
+.agent-actions-rpc-total span:last-child {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: #555;
   white-space: nowrap;
 }

@@ -132,6 +132,18 @@ function ThinkingStream({ streamingState }) {
                 <span className="thinking-stream__step-text" title={step.text}>
                   {step.text}
                 </span>
+                {step.txUrl ? (
+                  <a
+                    className="thinking-stream__tx-link"
+                    href={step.txUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={step.txHash ?? 'View transaction'}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Tx
+                  </a>
+                ) : null}
                 {step.cost ? (
                   <span className="thinking-stream__step-cost">{step.cost}</span>
                 ) : null}

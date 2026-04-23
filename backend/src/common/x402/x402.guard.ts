@@ -27,7 +27,15 @@ export class X402PaymentGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const response = context.switchToHttp().getResponse();
-    const middleware = this.x402Service.createRouteMiddleware(request, charge);
+
+    // Resolve dynamic price if a PriceFn was provided instead of a static string.
+    const resolvedPrice =
+      typeof charge.price === "function"
+        ? await charge.price(request as Record<string, unknown>)
+        : charge.price;
+
+    const resolvedCharge: X402ChargeOptions = { ...charge, price: resolvedPrice };
+    const middleware = this.x402Service.createRouteMiddleware(request, resolvedCharge);
 
     await new Promise<void>((resolve, reject) => {
       const next: NextFunction = (error) => {

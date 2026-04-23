@@ -28,7 +28,19 @@ export type PlannedPremiumAction =
       type: "get_market_overview";
     }
   | {
-      type: "get_token_details";
+      type: "get_token_profile";
+      tokenId: string;
+    }
+  | {
+      type: "get_token_erc20";
+      tokenId: string;
+    }
+  | {
+      type: "get_token_transfers";
+      tokenId: string;
+    }
+  | {
+      type: "get_token_holders";
       tokenId: string;
     }
   | {
@@ -144,7 +156,12 @@ export class GeminiService {
 
     // Only allow token-specific actions in the refinement step.
     return this.normalizePlannedActions(actions).filter(
-      (a) => a.type === "get_token_details" || a.type === "get_token_history",
+      (a) =>
+        a.type === "get_token_profile" ||
+        a.type === "get_token_erc20" ||
+        a.type === "get_token_transfers" ||
+        a.type === "get_token_holders" ||
+        a.type === "get_token_history",
     );
   }
 
@@ -174,7 +191,14 @@ export class GeminiService {
 
     // Only allow token-specific actions in anomaly investigation.
     const actions = this.normalizePlannedActions(rawActions)
-      .filter((a) => a.type === "get_token_details" || a.type === "get_token_history")
+      .filter(
+        (a) =>
+          a.type === "get_token_profile" ||
+          a.type === "get_token_erc20" ||
+          a.type === "get_token_transfers" ||
+          a.type === "get_token_holders" ||
+          a.type === "get_token_history",
+      )
       .slice(0, 3);
 
     return { actions, anomalies };
@@ -383,10 +407,18 @@ export class GeminiService {
           continue;
         }
 
-        dedupedActions.set(`${type}:${tokenId}`, {
-          type,
+        // Backward-compat: map legacy action to the new granular profile call.
+        dedupedActions.set(`get_token_profile:${tokenId}`, {
+          type: "get_token_profile",
           tokenId,
-        });
+        } as PlannedPremiumAction);
+        continue;
+      }
+
+      if (type === "get_token_profile" || type === "get_token_erc20" || type === "get_token_transfers" || type === "get_token_holders") {
+        const tokenId = this.normalizeTokenId(action.tokenId);
+        if (!tokenId) continue;
+        dedupedActions.set(`${type}:${tokenId}`, { type, tokenId } as PlannedPremiumAction);
         continue;
       }
 

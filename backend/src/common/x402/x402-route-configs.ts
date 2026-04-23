@@ -1,3 +1,4 @@
+import { estimateHoldersPrice, estimateHistoryPrice, estimateTransfersPrice } from "../../modules/token/token-price-estimators.js";
 import { type X402ChargeOptions } from "./x402.types.js";
 
 export const x402RouteConfigs = {
@@ -5,13 +6,34 @@ export const x402RouteConfigs = {
     price: "$0.01",
     description: "Access the aggregated market overview.",
   },
+  /**
+   * Token details are split into paid sub-endpoints so the UI can show
+   * granular, per-step x402 settlements (each has its own tx hash).
+   */
+  getTokenProfile: {
+    price: "$0.01",
+    description: "Access token profile metadata (dataset-backed).",
+  },
+  getTokenErc20: {
+    price: "$0.01",
+    description: "Access ERC-20 contract metadata (name, symbol, decimals, supply).",
+  },
+  getTokenTransfers: {
+    price: estimateTransfersPrice,
+    description: "Access recent on-chain transfer activity for a token.",
+  },
+  getTokenHolders: {
+    price: estimateHoldersPrice,
+    description: "Access on-chain holder balances derived from transfer participants.",
+  },
+  // Backward-compatible: full token card (kept for non-agent callers).
   getTokenById: {
     price: "$0.01",
     description: "Access token metadata and on-chain transfer activity.",
   },
   getTokenHistory: {
-    price: "$0.01",
-    description: "Access token history time series data.",
+    price: estimateHistoryPrice,
+    description: "Access token history time series data with on-chain activity.",
   },
   getWalletPortfolio: {
     price: "$0.02",

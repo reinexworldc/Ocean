@@ -151,6 +151,21 @@
   white-space: nowrap;
 }
 
+/* Tx link */
+.thinking-stream__tx-link {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  line-height: 15px;
+  color: #4f46e5;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.thinking-stream__tx-link:hover {
+  text-decoration: underline;
+}
+
 /* Model swap step */
 .thinking-stream__step--model-swap .thinking-stream__step-text {
   color: #6366f1;

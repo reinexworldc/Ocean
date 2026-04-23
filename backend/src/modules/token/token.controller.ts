@@ -18,6 +18,33 @@ export class TokenController {
   }
 
   /**
+   * Granular paid endpoints for agent/debug UI.
+   */
+  @Get(":id/profile")
+  @RequireX402(x402RouteConfigs.getTokenProfile)
+  getTokenProfile(@Param("id") tokenId: string) {
+    return this.tokenService.getTokenProfile(tokenId);
+  }
+
+  @Get(":id/erc20")
+  @RequireX402(x402RouteConfigs.getTokenErc20)
+  getTokenErc20(@Param("id") tokenId: string) {
+    return this.tokenService.getTokenErc20(tokenId);
+  }
+
+  @Get(":id/transfers")
+  @RequireX402(x402RouteConfigs.getTokenTransfers)
+  getTokenTransfers(@Param("id") tokenId: string) {
+    return this.tokenService.getTokenTransfers(tokenId);
+  }
+
+  @Get(":id/holders")
+  @RequireX402(x402RouteConfigs.getTokenHolders)
+  getTokenHolders(@Param("id") tokenId: string) {
+    return this.tokenService.getTokenHolders(tokenId);
+  }
+
+  /**
    * Returns price history for the requested period.
    */
   @Get(":id/history")
