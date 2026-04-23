@@ -1,11 +1,12 @@
 import { GoogleGenAI } from "@google/genai";
-import { Injectable, Logger, ServiceUnavailableException } from "@nestjs/common";
+import { Inject, Injectable, Logger, Optional, ServiceUnavailableException } from "@nestjs/common";
 import { HISTORY_PERIODS, type HistoryPeriod } from "../payments/paid-api-catalog.js";
 import { buildAnomalyDetectionPrompt } from "./prompts/anomaly-detection.prompt.js";
 import { buildPlanningPrompt } from "./prompts/planning.prompt.js";
 import { buildRefinementPrompt, type ExecutedActionSummary } from "./prompts/refinement.prompt.js";
 import { buildReplyPrompt } from "./prompts/reply.prompt.js";
 import { buildToolReplyPrompt } from "./prompts/tool-reply.prompt.js";
+import { OpenRouterService } from "./openrouter.service.js";
 
 const DEFAULT_GEMINI_MODEL = "gemini-3-flash-preview";
 
@@ -53,6 +54,10 @@ export type PlannedPremiumAction =
 export class GeminiService {
   private readonly logger = new Logger(GeminiService.name);
   private client: GoogleGenAI | null = null;
+
+  constructor(
+    @Optional() @Inject(OpenRouterService) private readonly openRouterService?: OpenRouterService,
+  ) {}
 
   async generateReply(messages: GeminiChatMessage[], onModelSwap?: ModelSwapCallback) {
     const text = await this.generateText(buildReplyPrompt(messages), onModelSwap);
@@ -237,7 +242,25 @@ export class GeminiService {
           continue;
         }
 
-        throw err;
+        // Non-503 error — skip remaining Gemini models and go straight to OpenRouter.
+        this.logger.warn(
+          `Model ${model} failed with non-retryable error, falling back to OpenRouter. Error: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        lastError = err;
+        break;
+      }
+    }
+
+    if (this.openRouterService?.isConfigured()) {
+      try {
+        this.logger.warn(`All Gemini models failed — using OpenRouter fallback.`);
+        onModelSwap?.(primaryModel, "openrouter");
+        return await this.openRouterService.generateText(prompt, primaryModel);
+      } catch (openRouterErr) {
+        this.logger.error(
+          `OpenRouter fallback also failed: ${openRouterErr instanceof Error ? openRouterErr.message : String(openRouterErr)}`,
+        );
+        throw openRouterErr;
       }
     }
 
@@ -276,17 +299,31 @@ export class GeminiService {
 
         return;
       } catch (err) {
-        // Only retry on unavailable errors and only if no tokens have been streamed yet,
-        // otherwise the response would be inconsistent.
-        if (this.isUnavailableError(err) && tokensYielded === 0) {
+        // Only retry remaining Gemini models if no tokens have been streamed yet
+        // to avoid inconsistent partial responses.
+        if (tokensYielded === 0) {
           this.logger.warn(
-            `Model ${model} unavailable (stream), trying next fallback. Error: ${err instanceof Error ? err.message : String(err)}`,
+            `Model ${model} failed (stream), trying next fallback. Error: ${err instanceof Error ? err.message : String(err)}`,
           );
           lastError = err;
           continue;
         }
 
         throw err;
+      }
+    }
+
+    if (this.openRouterService?.isConfigured()) {
+      try {
+        this.logger.warn(`All Gemini models failed (stream) — using OpenRouter fallback.`);
+        onModelSwap?.(primaryModel, "openrouter");
+        yield* this.openRouterService.generateTextStream(prompt, primaryModel);
+        return;
+      } catch (openRouterErr) {
+        this.logger.error(
+          `OpenRouter fallback (stream) also failed: ${openRouterErr instanceof Error ? openRouterErr.message : String(openRouterErr)}`,
+        );
+        throw openRouterErr;
       }
     }
 

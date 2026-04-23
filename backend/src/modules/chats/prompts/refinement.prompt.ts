@@ -56,6 +56,7 @@ export function buildRefinementPrompt(params: {
     "- Deduplication rule: two actions are duplicates ONLY when type + tokenId + period all match.",
     "- Limit additional actions to what is genuinely needed; do not over-fetch.",
     "- CRITICAL: Only use token IDs that appear explicitly in the tool results below (e.g. in topByVolume, topGainers, topLosers arrays). Never invent or guess token IDs — if a token ID does not appear in the result data, do not include it.",
+    "- CRITICAL: If the user's message explicitly names one or more specific tokens (e.g. 'analyze MOON', 'tell me about BTC'), do NOT add fetches for other tokens that merely appear in the market overview. Only expand to other tokens when the user asked a broad query like 'top tokens', 'best performers', or 'market leaders'.",
 
     `Already executed actions (do NOT repeat these):\n${safeJsonStringify(alreadyExecutedKeys)}`,
     `Initial tool results:\n${safeJsonStringify(params.toolResults)}`,

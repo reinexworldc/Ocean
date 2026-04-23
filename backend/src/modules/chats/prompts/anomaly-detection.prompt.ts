@@ -71,6 +71,7 @@ export function buildAnomalyDetectionPrompt(params: {
     "- Use uppercase token ids.",
     `- Supported history periods: ${HISTORY_PERIODS.join(", ")}.`,
     "- Deduplication: two actions are duplicates only when type + tokenId + period all match.",
+    "- CRITICAL: Only investigate anomalies for tokens the user explicitly requested in their message. Do NOT flag or fetch additional data for tokens that only appeared incidentally (e.g. in a market overview top-losers/gainers list). If the user asked about MOON, only run diagnostic checks on MOON.",
 
     `Already executed actions (do NOT repeat):\n${safeJsonStringify(alreadyExecutedKeys)}`,
     `Tool results:\n${safeJsonStringify(params.toolResults)}`,

@@ -6,10 +6,11 @@ import { ChatAgentService } from "./chat-agent.service.js";
 import { ChatsController } from "./chats.controller.js";
 import { ChatsService } from "./chats.service.js";
 import { GeminiService } from "./gemini.service.js";
+import { OpenRouterService } from "./openrouter.service.js";
 
 @Module({
   imports: [AuthModule, PaymentsModule, TradeModule],
   controllers: [ChatsController],
-  providers: [ChatsService, GeminiService, ChatAgentService],
+  providers: [ChatsService, GeminiService, OpenRouterService, ChatAgentService],
 })
 export class ChatsModule {}
