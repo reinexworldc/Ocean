@@ -13,6 +13,8 @@ const ACTION_LABELS: Record<string, string> = {
   get_token_holders: "Token Holders",
   get_token_history: "Token History",
   get_wallet_portfolio: "Wallet Portfolio",
+  get_signal: "Signal Agent",
+  compare_arc_token: "Token Comparison",
 };
 
 export type ExecutedAgentAction = {
@@ -20,6 +22,8 @@ export type ExecutedAgentAction = {
   /** Optional identifiers used to de-duplicate tool calls across stream retries. */
   tokenId?: string;
   period?: HistoryPeriod;
+  /** Used by compare_arc_token to track the external coin for dedup. */
+  externalCoin?: string;
   endpoint: string;
   amountUsd: string;
   transactionId: string;
@@ -468,6 +472,10 @@ export class ChatAgentService {
         return paidApiCatalog.getTokenHistory.priceUsd;
       case "get_wallet_portfolio":
         return paidApiCatalog.getWalletPortfolio.priceUsd;
+      case "get_signal":
+        return paidApiCatalog.getSignal.priceUsd;
+      case "compare_arc_token":
+        return paidApiCatalog.getComparison.priceUsd;
       default:
         return null;
     }
@@ -520,18 +528,32 @@ export class ChatAgentService {
 
   private actionMeta(action: PlannedPremiumAction) {
     const label = ACTION_LABELS[action.type] ?? action.type;
-    const tokenId = "tokenId" in action ? action.tokenId.toUpperCase() : undefined;
+    const tokenId =
+      "tokenId" in action
+        ? action.tokenId.toUpperCase()
+        : "arcTokenId" in action
+          ? (action as { arcTokenId: string }).arcTokenId.toUpperCase()
+          : undefined;
     const tokenSuffix = tokenId ? ` ${tokenId}` : "";
     return { label, tokenId, tokenSuffix };
   }
 
   private actionKey(action: PlannedPremiumAction): string {
+    if (action.type === "compare_arc_token") {
+      return `${action.type}:${action.arcTokenId.toUpperCase()}:${action.externalCoin}`;
+    }
+
     const tokenId = "tokenId" in action ? action.tokenId.toUpperCase() : "";
     const period = "period" in action ? String(action.period) : "";
     return `${action.type}:${tokenId}:${period}`;
   }
 
   private executedKey(executed: ExecutedAgentAction): string {
+    if (executed.type === "compare_arc_token") {
+      const tokenId = executed.tokenId?.toUpperCase?.() ?? "";
+      return `${executed.type}:${tokenId}:${executed.externalCoin ?? ""}`;
+    }
+
     const tokenId = executed.tokenId?.toUpperCase?.() ?? "";
     const period = executed.period ? String(executed.period) : "";
     return `${executed.type}:${tokenId}:${period}`;
@@ -741,6 +763,58 @@ export class ChatAgentService {
           settlementTransaction: response.settlementTransaction,
           paymentNetwork: response.paymentNetwork,
           summary: this.summarizePortfolio(response.data),
+        };
+      }
+      case "get_signal": {
+        const tokenId = action.tokenId.toUpperCase();
+        const endpoint = paidApiCatalog.getSignal.buildPath(tokenId);
+        const response = await this.paymentsService.callPaidJsonEndpoint<Record<string, unknown>>({
+          userId,
+          chatId,
+          actionType: paidApiCatalog.getSignal.actionType,
+          amountUsd: paidApiCatalog.getSignal.priceUsd,
+          description: paidApiCatalog.getSignal.description,
+          method: paidApiCatalog.getSignal.method,
+          path: endpoint,
+        });
+
+        return {
+          type: action.type,
+          tokenId,
+          period: undefined,
+          endpoint,
+          amountUsd: paidApiCatalog.getSignal.priceUsd,
+          transactionId: response.transactionId,
+          settlementTransaction: response.settlementTransaction,
+          paymentNetwork: response.paymentNetwork,
+          summary: response.data,
+        };
+      }
+      case "compare_arc_token": {
+        const arcTokenId = action.arcTokenId.toUpperCase();
+        const externalCoin = action.externalCoin.toLowerCase();
+        const endpoint = paidApiCatalog.getComparison.buildPath(arcTokenId, externalCoin);
+        const response = await this.paymentsService.callPaidJsonEndpoint<Record<string, unknown>>({
+          userId,
+          chatId,
+          actionType: paidApiCatalog.getComparison.actionType,
+          amountUsd: paidApiCatalog.getComparison.priceUsd,
+          description: paidApiCatalog.getComparison.description,
+          method: paidApiCatalog.getComparison.method,
+          path: endpoint,
+        });
+
+        return {
+          type: action.type,
+          tokenId: arcTokenId,
+          period: undefined,
+          externalCoin,
+          endpoint,
+          amountUsd: paidApiCatalog.getComparison.priceUsd,
+          transactionId: response.transactionId,
+          settlementTransaction: response.settlementTransaction,
+          paymentNetwork: response.paymentNetwork,
+          summary: response.data,
         };
       }
       case "propose_buy_token":

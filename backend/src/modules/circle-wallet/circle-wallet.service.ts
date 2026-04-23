@@ -8,10 +8,12 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { GatewayClient, CHAIN_CONFIGS } from "@circle-fin/x402-batching/client";
-import { erc20Abi, getAddress, maxUint256, parseUnits } from "viem";
+import { toClientEvmSigner } from "@x402/evm";
+import { createPublicClient, erc20Abi, getAddress, maxUint256, parseUnits } from "viem";
 import { type UserModel as User } from "../../generated/prisma/models/User.js";
 import { CircleWalletBlockchain } from "../../generated/prisma/enums.js";
 import { PrismaService } from "../../prisma/prisma.service.js";
+import { arcHttpTransport, getArcTestnetRpcUrl } from "../../common/rpc/arc-rpc.transport.js";
 import {
   DEFAULT_ARC_TESTNET_RPC_URL,
   CIRCLE_EOA_ACCOUNT_TYPE,
@@ -24,11 +26,15 @@ import {
   persistCircleWalletSetId,
   resolveCircleWalletSetId,
   resolveCircleWalletSetName,
+  upsertBackendEnvValue,
 } from "./circle-wallet.client.js";
 import type {
   GatewayBalancesResult,
   WalletSummary,
 } from "./circle-wallet.types.js";
+
+const SIGNAL_AGENT_WALLET_ID_KEY = "SIGNAL_AGENT_CIRCLE_WALLET_ID";
+const SIGNAL_AGENT_WALLET_ADDRESS_KEY = "SIGNAL_AGENT_CIRCLE_WALLET_ADDRESS";
 
 const REPLENISH_AMOUNT_USDC = "0.5";
 const REPLENISH_COOLDOWN_MS = 30_000;
@@ -188,6 +194,181 @@ export class CircleWalletService {
     this.logger.log(`Circle wallet set ${walletSet.id} created and persisted to .env.`);
 
     return walletSet.id;
+  }
+
+  /**
+   * Provisions (or retrieves from env) a Circle wallet for the Signal Agent.
+   * Persists wallet ID and address to .env so they survive restarts.
+   */
+  async provisionSignalAgentWallet(): Promise<{ walletId: string; walletAddress: string }> {
+    const walletId = process.env[SIGNAL_AGENT_WALLET_ID_KEY]?.trim();
+    const walletAddress = process.env[SIGNAL_AGENT_WALLET_ADDRESS_KEY]?.trim();
+
+    if (walletId && walletAddress) {
+      return { walletId, walletAddress };
+    }
+
+    this.logger.log("Signal Agent: provisioning Circle wallet...");
+
+    const client = await createCircleWalletClient({
+      log: (message) => this.logger.log(message),
+    });
+
+    const walletSetId = resolveCircleWalletSetId();
+
+    if (!walletSetId) {
+      throw new InternalServerErrorException(
+        "CIRCLE_WALLET_SET_ID is required to provision the Signal Agent Circle wallet.",
+      );
+    }
+
+    const created = (
+      await client.createWallets({
+        walletSetId,
+        blockchains: [DEFAULT_CIRCLE_WALLET_BLOCKCHAIN],
+        count: 1,
+        accountType: CIRCLE_EOA_ACCOUNT_TYPE,
+        idempotencyKey: createCircleIdempotencyKey(),
+      })
+    ).data?.wallets?.[0];
+
+    if (!created?.id || !created.address) {
+      throw new InternalServerErrorException("Signal Agent: Circle wallet creation failed.");
+    }
+
+    upsertBackendEnvValue(SIGNAL_AGENT_WALLET_ID_KEY, created.id);
+    upsertBackendEnvValue(SIGNAL_AGENT_WALLET_ADDRESS_KEY, created.address);
+    process.env[SIGNAL_AGENT_WALLET_ID_KEY] = created.id;
+    process.env[SIGNAL_AGENT_WALLET_ADDRESS_KEY] = created.address;
+
+    this.logger.log(`Signal Agent: Circle wallet provisioned. address=${created.address}`);
+
+    return { walletId: created.id, walletAddress: created.address };
+  }
+
+  /**
+   * Returns an x402 EVM signer backed by Circle's developer-controlled wallet API.
+   * Used by the Signal Agent to sign x402 payment authorizations.
+   */
+  async createSignerForWallet(walletId: string, walletAddress: string) {
+    const circleClient = await createCircleWalletClient();
+    const publicClient = createPublicClient({
+      transport: arcHttpTransport(getArcTestnetRpcUrl()),
+    });
+
+    return toClientEvmSigner(
+      {
+        address: walletAddress as `0x${string}`,
+        signTypedData: async ({ domain, types, primaryType, message }) => {
+          const circleTypedData = this.buildCircleTypedData({
+            domain: domain as Record<string, unknown>,
+            types: types as Record<string, unknown>,
+            primaryType,
+            message: message as Record<string, unknown>,
+          });
+
+          const response = await circleClient.signTypedData({
+            walletId,
+            data: JSON.stringify(circleTypedData, (_key, v) =>
+              typeof v === "bigint" ? v.toString() : v,
+            ),
+            memo: "Signal Agent x402 payment",
+          });
+
+          const signature = response.data?.signature;
+
+          if (!signature) {
+            throw new InternalServerErrorException(
+              "Circle did not return an EIP-712 signature for the Signal Agent.",
+            );
+          }
+
+          return signature as `0x${string}`;
+        },
+      },
+      publicClient,
+    );
+  }
+
+  private buildCircleTypedData(input: {
+    domain: Record<string, unknown>;
+    types: Record<string, unknown>;
+    primaryType: string;
+    message: Record<string, unknown>;
+  }) {
+    const normalizedTypes = this.normalizeCircleTypedDataTypes(input.types);
+    const messageFields = normalizedTypes[input.primaryType] ?? [];
+
+    return {
+      types: {
+        ...normalizedTypes,
+        EIP712Domain: this.buildCircleEip712DomainTypes(input.domain),
+      },
+      domain: this.normalizeCircleTypedDataValue(input.domain),
+      primaryType: input.primaryType,
+      message: this.pickCircleTypedDataFields(input.message, messageFields),
+    };
+  }
+
+  private normalizeCircleTypedDataTypes(types: Record<string, unknown>) {
+    return Object.fromEntries(
+      Object.entries(types).flatMap(([typeName, fields]) => {
+        if (!Array.isArray(fields)) return [];
+
+        return [
+          [
+            typeName,
+            fields.flatMap((field) => {
+              if (!field || typeof field !== "object" || Array.isArray(field)) return [];
+
+              const f = field as Record<string, unknown>;
+              const name = typeof f.name === "string" ? f.name : null;
+              const type = typeof f.type === "string" ? f.type : null;
+
+              return name && type ? [{ name, type }] : [];
+            }),
+          ],
+        ];
+      }),
+    ) as Record<string, Array<{ name: string; type: string }>>;
+  }
+
+  private buildCircleEip712DomainTypes(domain: Record<string, unknown>) {
+    const entries: Array<{ name: string; type: string }> = [];
+    if (domain.name !== undefined) entries.push({ name: "name", type: "string" });
+    if (domain.version !== undefined) entries.push({ name: "version", type: "string" });
+    if (domain.chainId !== undefined) entries.push({ name: "chainId", type: "uint256" });
+    if (domain.verifyingContract !== undefined)
+      entries.push({ name: "verifyingContract", type: "address" });
+    if (domain.salt !== undefined) entries.push({ name: "salt", type: "bytes32" });
+
+    return entries;
+  }
+
+  private pickCircleTypedDataFields(
+    value: Record<string, unknown>,
+    fields: Array<{ name: string; type: string }>,
+  ): Record<string, unknown> {
+    return Object.fromEntries(
+      fields
+        .filter((f) => value[f.name] !== undefined)
+        .map((f) => [f.name, this.normalizeCircleTypedDataValue(value[f.name])]),
+    );
+  }
+
+  private normalizeCircleTypedDataValue(value: unknown): unknown {
+    if (typeof value === "bigint") return value.toString();
+    if (Array.isArray(value)) return value.map((item) => this.normalizeCircleTypedDataValue(item));
+    if (value && typeof value === "object") {
+      return Object.fromEntries(
+        Object.entries(value as Record<string, unknown>).map(([k, v]) => [
+          k,
+          this.normalizeCircleTypedDataValue(v),
+        ]),
+      );
+    }
+
+    return value;
   }
 
   private createGatewayClient() {

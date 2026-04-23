@@ -63,6 +63,49 @@ Each of Ocean's API endpoints charges a precise fraction-of-a-cent fee proportio
 
 ---
 
+## A2A Payment Loop — Three-Level Agent Chain
+
+Ocean implements a real **Agent-to-Agent** payment hierarchy. During the anomaly investigation phase of a query, the Ocean agent does not simply fetch more data itself — it purchases a synthesized signal from an autonomous **Signal Agent** that has its own wallet, its own pricing, and its own upstream data costs.
+
+```
+USER
+ │  chat message
+ ▼
+OCEAN AGENT  (user's Circle wallet)
+ │  anomaly detected → buys signal
+ │  POST /signals/MOON  ──► HTTP 402: $0.005
+ │  pays from user's Circle wallet
+ │  settlement tx → ArcScan ①
+ ▼
+SIGNAL AGENT  (own EOA wallet: SIGNAL_AGENT_RECEIVER_ADDRESS)
+ │  receives $0.005
+ │  fetches raw data to compute verdict
+ │  GET /token/MOON/profile  ──► HTTP 402: $0.01
+ │  pays from its own EOA key
+ │  settlement tx → ArcScan ②
+ ▼
+TOKEN API  (X402_SELLER_ADDRESS)
+ │  receives $0.01, returns profile data
+ ▼
+SIGNAL AGENT  synthesizes: { signal: "sell", confidence: 0.82, reasoning: "..." }
+ ▼
+OCEAN AGENT  includes verdict in Gemini reply
+ ▼
+USER  sees the signal + two on-chain settlement links
+```
+
+### Why this matters
+
+The Signal Agent is a **separate economic actor**. It owns its receiver address, sets its own price, and independently pays for the data it needs. The Ocean agent does not know or care how the signal is computed — it just pays $0.005 and receives a verdict. This is the same relationship as any API marketplace, except:
+
+- No registration, no API keys, no contracts — just an x402 HTTP header
+- Every purchase is a verifiable on-chain event with a block explorer link
+- Any third-party could deploy a competing Signal Agent and Ocean could route to it instead
+
+One agent buying a service from another agent — each settling on Arc in real time — is the primitive that makes autonomous agent economies possible.
+
+---
+
 ## How It Works — Step by Step
 
 ```
@@ -86,19 +129,22 @@ Each of Ocean's API endpoints charges a precise fraction-of-a-cent fee proportio
 
 ## API Pricing — Every Call Has a Price
 
-| Endpoint | Description | Price |
-|---|---|---|
-| `GET /market` | Aggregated market overview | **$0.01** |
-| `GET /token/:id/profile` | Token metadata (dataset-backed) | **$0.01** |
-| `GET /token/:id/erc20` | ERC-20 on-chain metadata | **$0.01** |
-| `GET /token/:id/transfers` | Recent transfer logs (RPC scan) | **$0.01** |
-| `GET /token/:id/holders` | Holder balances from transfer participants | **$0.01** |
-| `GET /token/:id/history` | Price/activity history time series | **$0.01** |
-| `GET /portfolio/:address` | Wallet portfolio breakdown | **$0.02** |
-| `POST /trade/buy` | Execute token buy | **$0.05** |
-| `POST /trade/sell` | Execute token sell | **$0.05** |
+| Endpoint | Description | Price | Paid to |
+|---|---|---|---|
+| `GET /market` | Aggregated market overview | **$0.01** | Ocean |
+| `GET /token/:id/profile` | Token metadata (dataset-backed) | **$0.01** | Ocean |
+| `GET /token/:id/erc20` | ERC-20 on-chain metadata | **$0.01** | Ocean |
+| `GET /token/:id/transfers` | Recent transfer logs (RPC scan) | **$0.01** | Ocean |
+| `GET /token/:id/holders` | Holder balances from transfer participants | **$0.01** | Ocean |
+| `GET /token/:id/history` | Price/activity history time series | **$0.01** | Ocean |
+| `GET /portfolio/:address` | Wallet portfolio breakdown | **$0.02** | Ocean |
+| `POST /trade/buy` | Execute token buy | **$0.05** | Ocean |
+| `POST /trade/sell` | Execute token sell | **$0.05** | Ocean |
+| `GET /signals/:tokenId` | Buy/sell/hold signal from Signal Agent | **$0.005** | Signal Agent |
 
 > Dynamic-price routes (`transfers`, `holders`, `history`) compute the exact cost from RPC operations performed and charge the maximum of the computed cost and $0.01 minimum.
+
+> `GET /signals/:tokenId` pays to the Signal Agent's own address. The Signal Agent independently pays `$0.01` to `GET /token/:id/profile` — making this endpoint a three-level A2A payment chain.
 
 ---
 
@@ -204,6 +250,7 @@ ocean/
 │   │       ├── market/       # Aggregated market data
 │   │       ├── payments/     # x402 client, paid-api-catalog
 │   │       ├── portfolio/    # On-chain portfolio reads
+│   │       ├── signals/      # Signal Agent (A2A): GET /signals/:tokenId
 │   │       ├── token/        # Token data + RPC cost estimators
 │   │       └── trade/        # Buy/sell execution via deployer wallet
 ├── frontend/
@@ -247,6 +294,10 @@ CIRCLE_WALLET_SET_ID=...
 # x402
 X402_FACILITATOR_URL=https://facilitator.x402.org
 X402_SELLER_ADDRESS=0x...
+
+# Signal Agent (A2A)
+SIGNAL_AGENT_PRIVATE_KEY=0x...     # EOA that pays for token data calls
+SIGNAL_AGENT_RECEIVER_ADDRESS=0x...  # address that receives $0.005 per signal
 
 # AI
 GEMINI_API_KEY=...
@@ -296,6 +347,7 @@ Connect with any EVM wallet on Arc Testnet. The app will automatically provision
 - [x] x402 payment protocol on Arc Testnet (Chain ID 5042002)
 - [x] USDC as the payment token throughout
 - [x] Deployed ERC-20 tokens on Arc Testnet (MOON, REKT, CRAB)
+- [x] Three-level A2A payment chain: user → Ocean Agent → Signal Agent → Token API
 
 ---
 
@@ -303,4 +355,4 @@ Connect with any EVM wallet on Arc Testnet. The app will automatically provision
 
 **Primary:** 🪙 Per-API Monetization Engine — Ocean charges per request using USDC, demonstrating viable per-call pricing at high frequency with transparent on-chain settlement.
 
-**Secondary:** 🤖 Agent-to-Agent Payment Loop — The Ocean agent autonomously pays for its own data fetches in real time without batching or custodial control, executing up to 7 independent x402 payments per user query.
+**Secondary:** 🤖 Agent-to-Agent Payment Loop — Ocean implements a genuine three-level A2A chain. During anomaly investigation, the Ocean agent purchases a buy/sell/hold signal from an autonomous Signal Agent (`GET /signals/:tokenId`, $0.005) which in turn pays the Token API ($0.01) to fetch the data it needs to synthesize its verdict. Each hop is a separate on-chain USDC settlement on Arc — two transaction hashes, two distinct wallet addresses, zero human involvement.

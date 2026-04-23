@@ -31,6 +31,15 @@ export type PaidApiAction =
     }
   | {
       type: "get_wallet_portfolio";
+    }
+  | {
+      type: "get_signal";
+      tokenId: string;
+    }
+  | {
+      type: "compare_arc_token";
+      arcTokenId: string;
+      externalCoin: string;
     };
 
 export const paidApiCatalog = {
@@ -89,5 +98,20 @@ export const paidApiCatalog = {
     description: x402RouteConfigs.getWalletPortfolio.description,
     method: "GET",
     buildPath: (walletAddress: string) => `/portfolio/${encodeURIComponent(walletAddress)}`,
+  },
+  getSignal: {
+    actionType: "get_signal",
+    priceUsd: x402RouteConfigs.getSignal.price,
+    description: x402RouteConfigs.getSignal.description,
+    method: "GET",
+    buildPath: (tokenId: string) => `/signals/${encodeURIComponent(tokenId)}`,
+  },
+  getComparison: {
+    actionType: "compare_arc_token",
+    priceUsd: x402RouteConfigs.getComparison.price,
+    description: x402RouteConfigs.getComparison.description,
+    method: "GET",
+    buildPath: (arcTokenId: string, externalCoin: string) =>
+      `/compare/${encodeURIComponent(arcTokenId)}?vs=${encodeURIComponent(externalCoin)}`,
   },
 } as const;

@@ -47,4 +47,20 @@ export const x402RouteConfigs = {
     price: "$0.05",
     description: "Execute a token sell trade request.",
   },
+  /**
+   * Signal Agent endpoint — receives $0.005 per call and internally pays
+   * $0.01 to the token profile API, forming the third level of the A2A chain.
+   *
+   * payTo is the Signal Agent's own receiver address (separate from the main
+   * seller address so on-chain flows are clearly distinguishable).
+   */
+  getSignal: {
+    price: "$0.005",
+    description: "Get a buy/sell/hold signal for a token from the autonomous Signal Agent ($0.005).",
+    payTo: process.env.SIGNAL_AGENT_RECEIVER_ADDRESS,
+  },
+  getComparison: {
+    price: "$0.02",
+    description: "Compare an Arc ecosystem token with a major market coin (CoinGecko data).",
+  },
 } satisfies Record<string, X402ChargeOptions>;

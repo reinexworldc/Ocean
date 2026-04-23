@@ -60,6 +60,9 @@ export function buildAnomalyDetectionPrompt(params: {
     '1. {"type":"get_token_details","tokenId":"SOL"}   — fetch current metrics, holders, transfers',
     '2. {"type":"get_token_history","tokenId":"SOL","period":"7d"} — broader context for a price move',
     '   (useful when the anomaly was detected in a shorter period like 24h)',
+    '3. {"type":"get_signal","tokenId":"SOL"} — buy/sell/hold verdict from the autonomous Signal Agent ($0.005)',
+    '   The Signal Agent itself pays $0.01 to fetch fresh token data and synthesizes a directional signal.',
+    '   Use this when you detect extreme sentiment or a sharp price move and want a synthesized verdict.',
 
     "## Rules",
     "- Return strict JSON only: {\"actions\":[...], \"anomalies\":[...]} — no markdown fences.",

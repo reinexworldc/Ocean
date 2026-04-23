@@ -11,6 +11,8 @@ import { PortfolioModule } from "./modules/portfolio/portfolio.module.js";
 import { TokenModule } from "./modules/token/token.module.js";
 import { TradeModule } from "./modules/trade/trade.module.js";
 import { UsersModule } from "./modules/users/users.module.js";
+import { SignalsModule } from "./modules/signals/signals.module.js";
+import { CompareModule } from "./modules/compare/compare.module.js";
 
 @Module({
   imports: [
@@ -26,6 +28,8 @@ import { UsersModule } from "./modules/users/users.module.js";
     MarketModule,
     PortfolioModule,
     TradeModule,
+    SignalsModule,
+    CompareModule,
   ],
 })
 export class AppModule {}

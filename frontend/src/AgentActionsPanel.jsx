@@ -9,6 +9,8 @@ const ACTION_LABELS = {
   get_token_holders: 'Get Token Holders',
   get_token_history: 'Get Token History',
   get_wallet_portfolio: 'Get Wallet Portfolio',
+  get_signal: 'Signal Agent',
+  compare_arc_token: 'Token Comparison',
 };
 
 function parseAmountUsd(raw) {

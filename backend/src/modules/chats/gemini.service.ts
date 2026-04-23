@@ -60,6 +60,15 @@ export type PlannedPremiumAction =
       type: "propose_sell_token";
       tokenId: string;
       tokenAmount: number;
+    }
+  | {
+      type: "get_signal";
+      tokenId: string;
+    }
+  | {
+      type: "compare_arc_token";
+      arcTokenId: string;
+      externalCoin: string;
     };
 
 @Injectable()
@@ -205,7 +214,8 @@ export class GeminiService {
           a.type === "get_token_erc20" ||
           a.type === "get_token_transfers" ||
           a.type === "get_token_holders" ||
-          a.type === "get_token_history",
+          a.type === "get_token_history" ||
+          a.type === "get_signal",
       )
       .slice(0, 3);
 
@@ -423,7 +433,13 @@ export class GeminiService {
         continue;
       }
 
-      if (type === "get_token_profile" || type === "get_token_erc20" || type === "get_token_transfers" || type === "get_token_holders") {
+      if (
+        type === "get_token_profile" ||
+        type === "get_token_erc20" ||
+        type === "get_token_transfers" ||
+        type === "get_token_holders" ||
+        type === "get_signal"
+      ) {
         const tokenId = this.normalizeTokenId(action.tokenId);
         if (!tokenId) continue;
         dedupedActions.set(`${type}:${tokenId}`, { type, tokenId } as PlannedPremiumAction);
@@ -460,6 +476,25 @@ export class GeminiService {
           type,
           tokenId,
           tokenAmount,
+        });
+        continue;
+      }
+
+      if (type === "compare_arc_token") {
+        const arcTokenId = this.normalizeTokenId(action.arcTokenId);
+        const externalCoin =
+          typeof action.externalCoin === "string" && action.externalCoin.trim().length > 0
+            ? action.externalCoin.trim().toLowerCase()
+            : null;
+
+        if (!arcTokenId || !externalCoin) {
+          continue;
+        }
+
+        dedupedActions.set(`${type}:${arcTokenId}:${externalCoin}`, {
+          type,
+          arcTokenId,
+          externalCoin,
         });
       }
     }

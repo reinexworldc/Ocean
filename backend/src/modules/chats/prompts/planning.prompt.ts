@@ -21,6 +21,7 @@ export function buildPlanningPrompt(
     '7. {"type":"get_wallet_portfolio"} -> GET /portfolio/:wallet using the authenticated user Circle wallet',
     '8. {"type":"propose_buy_token","tokenId":"MOON","tokenAmount":1000} -> Prepare a buy proposal for the user (costs $0.05 to execute)',
     '9. {"type":"propose_sell_token","tokenId":"MOON","tokenAmount":1000} -> Prepare a sell proposal for the user (costs $0.05 to execute)',
+    '10. {"type":"compare_arc_token","arcTokenId":"MOON","externalCoin":"bitcoin"} -> GET /compare/MOON?vs=bitcoin — compare an Arc token vs a major market coin via CoinGecko real-time data.',
 
     "Rules:",
     "- Return an empty actions array for greetings, casual chat, or requests that do not need premium data.",
@@ -38,6 +39,12 @@ export function buildPlanningPrompt(
     "  * The tokenAmount must be a positive number explicitly stated by the user (e.g. 'buy 1000 MOON' → tokenAmount: 1000).",
     "  * If the user says something like 'buy some MOON' without a specific amount, ask for clarification instead of guessing.",
     "  * Never combine propose_buy_token/propose_sell_token with other actions in the same response.",
+
+    "compare_arc_token rules:",
+    "- Use when the user asks to compare, benchmark, or contrast an Arc token against a well-known crypto (Bitcoin, Ethereum, Solana, Dogecoin, Pepe, Shiba Inu, XRP, Cardano, etc.).",
+    "- arcTokenId must be one of: MOON, REKT, CRAB. externalCoin must be a lowercase CoinGecko coin id: bitcoin, ethereum, solana, dogecoin, shiba-inu, ripple, cardano, pepe, binancecoin, matic-network, chainlink, uniswap, litecoin, polkadot, near, sui, aptos.",
+    "- Accept common aliases: 'btc'→bitcoin, 'eth'→ethereum, 'sol'→solana, 'doge'→dogecoin, 'shib'→shiba-inu, 'matic'→matic-network, 'dot'→polkadot, 'link'→chainlink.",
+    "- Never emit compare_arc_token together with propose_buy_token/propose_sell_token.",
 
     `Authenticated user Circle wallet available: ${circleWalletAddress ? "yes" : "no"}.`,
     `Latest user message: ${latestUserMessage}`,

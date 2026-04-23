@@ -4,7 +4,7 @@ import { Injectable, Logger } from "@nestjs/common";
 /**
  * OpenRouter model to use for all Gemini fallbacks.
  */
-const DEFAULT_OPENROUTER_MODEL = "google/gemini-2.5-flash-lite";
+const DEFAULT_OPENROUTER_MODEL = "google/gemini-3-flash-preview";
 
 @Injectable()
 export class OpenRouterService {
