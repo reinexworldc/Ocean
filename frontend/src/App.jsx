@@ -49,16 +49,8 @@ function App() {
     );
   }, [chats.selectedChatId]);
 
-  // Returns the effective chatId shown in a given pane.
-  // Pane 0 mirrors the hook's selectedChatId so its auto-load logic still works.
-  const getPaneChatId = useCallback(
-    (pane, index) => (index === 0 ? chats.selectedChatId : pane.chatId),
-    [chats.selectedChatId]
-  );
-
-  const focusedPaneIndex = panes.findIndex((p) => p.id === focusedPaneId);
-  const focusedPane = panes[focusedPaneIndex >= 0 ? focusedPaneIndex : 0];
-  const focusedPaneChatId = getPaneChatId(focusedPane, focusedPaneIndex >= 0 ? focusedPaneIndex : 0);
+  const focusedPane = panes.find((p) => p.id === focusedPaneId) ?? panes[0];
+  const focusedPaneChatId = focusedPane?.chatId ?? null;
 
   const ensureMessagesLoaded = useCallback(
     (chatId) => {
@@ -73,27 +65,21 @@ function App() {
   // ── Sidebar handlers ─────────────────────────────────────────────────────
   const handleSidebarSelectChat = useCallback(
     (chatId) => {
-      if (focusedPaneIndex === 0) {
-        chats.selectChat(chatId);
-      } else {
-        setPanes((prev) =>
-          prev.map((p) => (p.id === focusedPaneId ? { ...p, chatId } : p))
-        );
-        ensureMessagesLoaded(chatId);
-      }
+      setPanes((prev) =>
+        prev.map((p) => (p.id === focusedPane.id ? { ...p, chatId } : p))
+      );
+      ensureMessagesLoaded(chatId);
     },
-    [chats, ensureMessagesLoaded, focusedPaneId, focusedPaneIndex]
+    [ensureMessagesLoaded, focusedPane.id]
   );
 
   const handleSidebarCreateChat = useCallback(async () => {
     const newChat = await chats.createChat();
-    if (focusedPaneIndex !== 0) {
-      setPanes((prev) =>
-        prev.map((p) => (p.id === focusedPaneId ? { ...p, chatId: newChat.id } : p))
-      );
-    }
+    setPanes((prev) =>
+      prev.map((p) => (p.id === focusedPane.id ? { ...p, chatId: newChat.id } : p))
+    );
     return newChat;
-  }, [chats, focusedPaneId, focusedPaneIndex]);
+  }, [chats, focusedPane.id]);
 
   // ── Pane management ──────────────────────────────────────────────────────
   const addPane = useCallback(() => {
@@ -122,21 +108,15 @@ function App() {
 
   // ── Per-pane send message ────────────────────────────────────────────────
   const sendMessageForPane = useCallback(
-    async (content, pane, paneIndex) => {
-      const paneChatId = getPaneChatId(pane, paneIndex);
+    async (content, pane) => {
       setIsSendingByPaneId((prev) => ({ ...prev, [pane.id]: true }));
       try {
         const response = await chats.sendMessage(content, {
-          chatId: paneChatId,
-          onNewChatCreated:
-            paneIndex !== 0
-              ? (newChat) =>
-                  setPanes((prev) =>
-                    prev.map((p) =>
-                      p.id === pane.id ? { ...p, chatId: newChat.id } : p
-                    )
-                  )
-              : undefined,
+          chatId: pane.chatId,
+          onNewChatCreated: (newChat) =>
+            setPanes((prev) =>
+              prev.map((p) => (p.id === pane.id ? { ...p, chatId: newChat.id } : p))
+            ),
         });
         if (Array.isArray(response?.agentActions) && response.agentActions.length > 0) {
           void circleWallet.reload();
@@ -146,7 +126,7 @@ function App() {
         setIsSendingByPaneId((prev) => ({ ...prev, [pane.id]: false }));
       }
     },
-    [chats, circleWallet, getPaneChatId]
+    [chats, circleWallet]
   );
 
   return (
@@ -183,8 +163,8 @@ function App() {
           />
 
           <div className="panes-container">
-            {panes.map((pane, index) => {
-              const paneChatId = getPaneChatId(pane, index);
+            {panes.map((pane) => {
+              const paneChatId = pane.chatId;
               const paneChat = chats.chats.find((c) => c.id === paneChatId) ?? null;
               const paneMessages = chats.messagesByChatId[paneChatId] ?? [];
               const paneMessagesStatus = chats.messagesStatusByChatId[paneChatId] ?? 'idle';
@@ -209,7 +189,7 @@ function App() {
                   onFocus={() => setFocusedPaneId(pane.id)}
                   onAddPane={panes.length < MAX_PANES ? addPane : null}
                   onClosePane={panes.length > 1 ? () => removePane(pane.id) : null}
-                  onSubmit={(content) => sendMessageForPane(content, pane, index)}
+                  onSubmit={(content) => sendMessageForPane(content, pane)}
                   isSending={isSendingByPaneId[pane.id] ?? false}
                   disabled={!walletSession.isAuthenticated}
                 />
