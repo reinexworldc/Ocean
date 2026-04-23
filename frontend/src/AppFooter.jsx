@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import './AppFooter.css';
 
@@ -29,32 +29,28 @@ function getPromptText(disabled, isSending, walletState) {
 function AppFooter({ onSubmit, disabled, isSending, walletState, walletError }) {
   const [value, setValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
-  const [caretOffset, setCaretOffset] = useState(0);
   const [submitError, setSubmitError] = useState('');
-  const [selectionStart, setSelectionStart] = useState(0);
-  const measureRef = useRef(null);
-  const inputRef = useRef(null);
+  const textareaRef = useRef(null);
   const promptText = getPromptText(disabled, isSending, walletState);
   const displayError = submitError || (disabled ? walletError?.message ?? '' : '');
 
   useEffect(() => {
     if (!disabled && !isSending) {
-      inputRef.current?.focus();
+      textareaRef.current?.focus();
     }
   }, [disabled, isSending]);
 
-  useLayoutEffect(() => {
-    if (!measureRef.current) {
-      return;
-    }
+  // Auto-grow: reset to 1-row height, then expand to fit content.
+  function adjustHeight() {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }
 
-    const measureWidth = measureRef.current.getBoundingClientRect().width;
-
-    setCaretOffset(Math.max(0, measureWidth > 0 ? measureWidth - 1 : 0));
-  }, [value, selectionStart]);
-
-  function syncCaret() {
-    setSelectionStart(inputRef.current?.selectionStart ?? 0);
+  function handleChange(event) {
+    setValue(event.target.value);
+    adjustHeight();
   }
 
   async function handleSubmit(event) {
@@ -68,13 +64,29 @@ function AppFooter({ onSubmit, disabled, isSending, walletState, walletError }) 
     setSubmitError('');
     setValue('');
 
+    // Reset height after clearing value.
+    requestAnimationFrame(() => {
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+      }
+    });
+
     try {
       await onSubmit(trimmedValue);
     } catch (error) {
       setValue(trimmedValue);
+      requestAnimationFrame(adjustHeight);
       setSubmitError(error instanceof Error ? error.message : 'Failed to send message.');
     } finally {
-      inputRef.current?.focus();
+      textareaRef.current?.focus();
+    }
+  }
+
+  function handleKeyDown(event) {
+    // Submit on Enter; Shift+Enter inserts a newline.
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      void handleSubmit(event);
     }
   }
 
@@ -83,46 +95,21 @@ function AppFooter({ onSubmit, disabled, isSending, walletState, walletError }) 
       <div className="app-footer__inner">
         <form className="app-footer__form" onSubmit={handleSubmit}>
           <div className="app-footer__inputContainer">
-            {(isFocused || value.length === 0) && (
-              <div
-                className="app-footer__inputIcon"
-                style={{ left: `${caretOffset}px` }}
-                aria-hidden="true"
-              />
+            {value.length === 0 && !isFocused && (
+              <div className="app-footer__inputIcon" aria-hidden="true" />
             )}
-            <input
-              ref={inputRef}
-              type="text"
+            <textarea
+              ref={textareaRef}
               className="app-footer__input"
               value={value}
-              onChange={(event) => {
-                setValue(event.target.value);
-                setSelectionStart(event.target.selectionStart ?? 0);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  void handleSubmit(event);
-                }
-              }}
-              onKeyUp={syncCaret}
-              onSelect={syncCaret}
-              onClick={syncCaret}
-              onFocus={() => {
-                setIsFocused(true);
-                syncCaret();
-              }}
-              onBlur={() => setIsFocused(false)}
+              rows={1}
+              onChange={handleChange}
+              onKeyDown={handleKeyDown}
               disabled={disabled || isSending}
+              placeholder={promptText}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
             />
-            {value.length === 0 && (
-              <span className="app-footer__prompt" aria-hidden="true">
-                {promptText}
-              </span>
-            )}
-            <span ref={measureRef} className="app-footer__inputMeasure" aria-hidden="true">
-              {value.slice(0, selectionStart).replace(/ /g, '\u00A0')}
-            </span>
           </div>
         </form>
 
