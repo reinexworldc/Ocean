@@ -4,7 +4,7 @@ import { HISTORY_PERIODS, type HistoryPeriod } from "../payments/paid-api-catalo
 import { buildAnomalyDetectionPrompt } from "./prompts/anomaly-detection.prompt.js";
 import { buildPlanningPrompt } from "./prompts/planning.prompt.js";
 import { buildRefinementPrompt, type ExecutedActionSummary } from "./prompts/refinement.prompt.js";
-import { buildReplyPrompt } from "./prompts/reply.prompt.js";
+import { buildReplyPrompt, buildTradeProposalReplyPrompt, type TradeProposalContext } from "./prompts/reply.prompt.js";
 import { buildToolReplyPrompt } from "./prompts/tool-reply.prompt.js";
 import { OpenRouterService } from "./openrouter.service.js";
 
@@ -105,6 +105,14 @@ export class GeminiService {
     }
 
     return text;
+  }
+
+  async *generateReplyForTradeProposalStream(
+    messages: GeminiChatMessage[],
+    proposal: TradeProposalContext,
+    onModelSwap?: ModelSwapCallback,
+  ): AsyncGenerator<string> {
+    yield* this.generateTextStream(buildTradeProposalReplyPrompt(messages, proposal), onModelSwap);
   }
 
   async *generateReplyWithToolResultsStream(

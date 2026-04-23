@@ -3,6 +3,39 @@
   max-width: 65%;
 }
 
+.agent-actions-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.agent-actions-savings {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 6px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 20px;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 11px;
+  line-height: 15px;
+  color: #16a34a;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.agent-actions-savings strong {
+  font-weight: 700;
+}
+
+.agent-actions-savings-icon {
+  display: block;
+  flex-shrink: 0;
+  color: #22c55e;
+}
+
 /* Summary row — acts as the toggle button */
 .agent-actions-summary {
   all: unset;

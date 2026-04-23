@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   BadRequestException,
+  Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -83,7 +84,7 @@ export class TradeService {
     transport: arcHttpTransport(getArcTestnetRpcUrl()),
   });
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   /**
    * Executes an on-chain ERC20 transfer from the deployer to the recipient wallet.
@@ -195,13 +196,14 @@ export class TradeService {
   }
 
   private getDeployerAccount() {
-    const privateKey = process.env.ARC_TESTNET_PRIVATE_KEY?.trim();
+    const raw = process.env.ARC_TESTNET_PRIVATE_KEY?.trim();
 
-    if (!privateKey) {
+    if (!raw) {
       throw new InternalServerErrorException("ARC_TESTNET_PRIVATE_KEY is not configured.");
     }
 
-    return privateKeyToAccount(privateKey as `0x${string}`);
+    const privateKey = (raw.startsWith("0x") ? raw : `0x${raw}`) as `0x${string}`;
+    return privateKeyToAccount(privateKey);
   }
 
   private async getTokenDecimals(tokenAddress: string): Promise<number> {

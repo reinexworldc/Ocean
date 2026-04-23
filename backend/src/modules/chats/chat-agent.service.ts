@@ -78,7 +78,9 @@ export class ChatAgentService {
 
     if (tradeAction && (tradeAction.type === "propose_buy_token" || tradeAction.type === "propose_sell_token")) {
       const proposal = await this.buildTradeProposal(tradeAction, params.circleWalletAddress);
-      const content = await this.geminiService.generateReply(params.history);
+      const tokens = this.geminiService.generateReplyForTradeProposalStream(params.history, proposal);
+      let content = "";
+      for await (const token of tokens) content += token;
       return {
         content,
         executedActions: [],
@@ -211,7 +213,7 @@ export class ChatAgentService {
       yield { phase: "trade_proposal", proposal };
       yield { phase: "generating", text: "Generating response..." };
 
-      const tokenStream = this.geminiService.generateReplyStream(params.history, onModelSwap);
+      const tokenStream = this.geminiService.generateReplyForTradeProposalStream(params.history, proposal, onModelSwap);
       const first = await tokenStream.next();
       yield* this.drainModelSwapEvents(swapQueue);
       if (!first.done && first.value) yield { phase: "token", text: first.value };
