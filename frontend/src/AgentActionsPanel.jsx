@@ -117,6 +117,113 @@ function ActionItem({ action, index }) {
   );
 }
 
+const SIGNAL_LABELS = { buy: 'BUY', sell: 'SELL', hold: 'HOLD' };
+
+function SignalAgentItem({ action }) {
+  const [expanded, setExpanded] = useState(false);
+  const summary = action.summary ?? {};
+  const signal = typeof summary.signal === 'string' ? summary.signal : null;
+  const confidence = typeof summary.confidence === 'number' ? summary.confidence : null;
+  const reasoning = typeof summary.reasoning === 'string' ? summary.reasoning : null;
+  const innerTx = typeof summary.settlementTransaction === 'string' ? summary.settlementTransaction : null;
+  const innerTxUrl = txUrlForArcTestnet(innerTx);
+  const outerTxUrl = txUrlForArcTestnet(action.settlementTransaction);
+
+  return (
+    <li className="agent-actions-item agent-actions-item--signal">
+      <div className="agent-actions-item-row">
+        <button
+          type="button"
+          className={`agent-actions-item-expand ${expanded ? 'agent-actions-item-expand--open' : ''}`}
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+        >
+          <svg width="8" height="8" viewBox="0 0 8 8" fill="none" aria-hidden="true">
+            <path d="M1.5 3L4 5.5L6.5 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+
+        <span className="agent-actions-item-label">Signal Agent</span>
+        {action.tokenId ? <span className="agent-actions-item-token">{action.tokenId}</span> : null}
+
+        {signal && !expanded ? (
+          <span className={`signal-badge signal-badge--${signal}`}>{SIGNAL_LABELS[signal] ?? signal.toUpperCase()}</span>
+        ) : null}
+
+        {outerTxUrl ? (
+          <a
+            className="agent-actions-item-tx"
+            href={outerTxUrl}
+            target="_blank"
+            rel="noreferrer"
+            title={action.settlementTransaction}
+            onClick={(e) => e.stopPropagation()}
+          >
+            Tx
+          </a>
+        ) : null}
+
+        <span className="agent-actions-item-price">{action.amountUsd ?? '—'}</span>
+      </div>
+
+      {expanded ? (
+        <div className="signal-agent-panel">
+          {/* A2A payment chain */}
+          <div className="signal-chain">
+            <span className="signal-chain-node signal-chain-node--you">You</span>
+            <span className="signal-chain-edge">
+              <span className="signal-chain-amount">{action.amountUsd}</span>
+              <svg className="signal-chain-arrow-svg" width="24" height="10" viewBox="0 0 24 10" fill="none" aria-hidden="true">
+                <path d="M0 5H20M20 5L15 1M20 5L15 9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </span>
+            <span className="signal-chain-node signal-chain-node--agent">
+              Signal Agent
+              {outerTxUrl ? (
+                <a href={outerTxUrl} target="_blank" rel="noreferrer" className="signal-chain-tx" onClick={(e) => e.stopPropagation()}>↗</a>
+              ) : null}
+            </span>
+            <span className="signal-chain-edge">
+              <span className="signal-chain-amount">$0.01</span>
+              <svg className="signal-chain-arrow-svg" width="24" height="10" viewBox="0 0 24 10" fill="none" aria-hidden="true">
+                <path d="M0 5H20M20 5L15 1M20 5L15 9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </span>
+            <span className="signal-chain-node signal-chain-node--api">
+              Token Profile
+              {innerTxUrl ? (
+                <a href={innerTxUrl} target="_blank" rel="noreferrer" className="signal-chain-tx" onClick={(e) => e.stopPropagation()}>↗</a>
+              ) : null}
+            </span>
+          </div>
+
+          {/* Signal result */}
+          {signal !== null ? (
+            <div className="signal-result">
+              <span className={`signal-badge signal-badge--lg signal-badge--${signal}`}>
+                {SIGNAL_LABELS[signal] ?? signal.toUpperCase()}
+              </span>
+              {confidence !== null ? (
+                <div className="signal-confidence">
+                  <div className="signal-confidence-track">
+                    <div className="signal-confidence-fill" style={{ width: `${Math.round(confidence * 100)}%` }} />
+                  </div>
+                  <span className="signal-confidence-pct">{Math.round(confidence * 100)}%</span>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {/* Reasoning */}
+          {reasoning ? (
+            <p className="signal-reasoning">{reasoning}</p>
+          ) : null}
+        </div>
+      ) : null}
+    </li>
+  );
+}
+
 function AgentActionsPanel({ actions }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -169,9 +276,13 @@ function AgentActionsPanel({ actions }) {
 
       {expanded ? (
         <ul className="agent-actions-list">
-          {actions.map((action, index) => (
-            <ActionItem key={`${action.type}-${action.tokenId ?? ''}-${index}`} action={action} index={index} />
-          ))}
+          {actions.map((action, index) =>
+            action.type === 'get_signal' ? (
+              <SignalAgentItem key={`${action.type}-${action.tokenId ?? ''}-${index}`} action={action} />
+            ) : (
+              <ActionItem key={`${action.type}-${action.tokenId ?? ''}-${index}`} action={action} index={index} />
+            )
+          )}
         </ul>
       ) : null}
     </div>

@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { CoinGeckoService } from "./coingecko.service.js";
@@ -77,7 +77,10 @@ export type CompareResult = {
 export class CompareService {
   private readonly logger = new Logger(CompareService.name);
 
-  constructor(private readonly coinGeckoService: CoinGeckoService) {}
+  constructor(
+    @Inject(CoinGeckoService)
+    private readonly coinGeckoService: CoinGeckoService,
+  ) {}
 
   async compare(arcTokenId: string, externalCoinRaw: string): Promise<CompareResult> {
     const normalized = arcTokenId.trim().toUpperCase();

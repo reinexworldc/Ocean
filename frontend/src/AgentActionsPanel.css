@@ -198,6 +198,157 @@
   text-decoration: underline;
 }
 
+/* ── Signal Agent unique panel ──────────────────────────── */
+
+.signal-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-weight: 700;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.signal-badge--buy  { background: #dcfce7; color: #15803d; }
+.signal-badge--sell { background: #fee2e2; color: #b91c1c; }
+.signal-badge--hold { background: #f3f4f6; color: #6b7280; }
+
+.signal-badge--lg {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.signal-agent-panel {
+  margin: 5px 0 2px 20px;
+  padding: 10px 12px;
+  background: #fafafa;
+  border: 1px solid #e8e8e8;
+  border-radius: 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+/* A2A payment chain */
+.signal-chain {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.signal-chain-node {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.signal-chain-node--you   { background: #e5e7eb; color: #374151; }
+.signal-chain-node--agent { background: #ede9fe; color: #5b21b6; }
+.signal-chain-node--api   { background: #dbeafe; color: #1d4ed8; }
+
+.signal-chain-tx {
+  font-size: 9px;
+  color: inherit;
+  opacity: 0.7;
+  text-decoration: none;
+  margin-left: 1px;
+}
+
+.signal-chain-tx:hover { opacity: 1; }
+
+.signal-chain-edge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.signal-chain-amount {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 9px;
+  font-weight: 500;
+  color: #9ca3af;
+  line-height: 1;
+}
+
+.signal-chain-arrow-svg {
+  display: block;
+  color: #d1d5db;
+}
+
+/* Signal result row */
+.signal-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.signal-confidence {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.signal-confidence-track {
+  flex: 1;
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 2px;
+  overflow: hidden;
+  max-width: 120px;
+}
+
+.signal-confidence-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: #6b7280;
+  transition: width 0.4s ease;
+}
+
+.agent-actions-item--signal .signal-badge--buy  ~ .signal-confidence .signal-confidence-fill,
+.signal-badge--buy + .signal-confidence .signal-confidence-fill { background: #22c55e; }
+.signal-badge--sell + .signal-confidence .signal-confidence-fill { background: #ef4444; }
+
+/* Confidence fill colour tied to signal */
+.signal-result:has(.signal-badge--buy)  .signal-confidence-fill { background: #22c55e; }
+.signal-result:has(.signal-badge--sell) .signal-confidence-fill { background: #ef4444; }
+.signal-result:has(.signal-badge--hold) .signal-confidence-fill { background: #9ca3af; }
+
+.signal-confidence-pct {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: #6b7280;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Reasoning text */
+.signal-reasoning {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 10px;
+  line-height: 1.55;
+  color: #6b7280;
+}
+
+/* ── end Signal Agent panel ─────────────────────────────── */
+
 /* RPC breakdown sub-list */
 .agent-actions-rpc-list {
   list-style: none;
