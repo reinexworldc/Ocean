@@ -2,6 +2,7 @@ import { Injectable, InternalServerErrorException } from "@nestjs/common";
 import { BatchFacilitatorClient, GatewayEvmScheme } from "@circle-fin/x402-batching/server";
 import { type FacilitatorClient, HTTPFacilitatorClient } from "@x402/core/server";
 import { paymentMiddleware, x402ResourceServer } from "@x402/express";
+import type { RoutesConfig } from "@x402/core/server";
 import {
   DEFAULT_X402_FACILITATOR_URL,
   DEFAULT_X402_NETWORK,
@@ -40,22 +41,24 @@ export class X402Service {
     const resolvedCharge = this.resolveCharge(charge);
     const routeKey = `${this.getRequestMethod(request)} ${this.getRequestPath(request)}`;
 
-    return paymentMiddleware(
-      {
-        [routeKey]: {
-          accepts: {
-            scheme: "exact",
-            network: resolvedCharge.network,
-            payTo: resolvedCharge.payTo,
-            price: resolvedCharge.price,
-            maxTimeoutSeconds: resolvedCharge.maxTimeoutSeconds,
-            extra: resolvedCharge.extra,
-          },
-          description: resolvedCharge.description,
-          resource: resolvedCharge.resource,
-          mimeType: resolvedCharge.mimeType ?? "application/json",
+    const routes: RoutesConfig = {
+      [routeKey]: {
+        accepts: {
+          scheme: "exact",
+          network: resolvedCharge.network,
+          payTo: resolvedCharge.payTo,
+          price: resolvedCharge.price,
+          maxTimeoutSeconds: resolvedCharge.maxTimeoutSeconds,
+          extra: resolvedCharge.extra,
         },
+        description: resolvedCharge.description,
+        resource: resolvedCharge.resource,
+        mimeType: resolvedCharge.mimeType ?? "application/json",
       },
+    };
+
+    return paymentMiddleware(
+      routes,
       this.resourceServer,
       {
         appName: "Ocean API",
