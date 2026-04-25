@@ -44,7 +44,7 @@ model Message {
   chatId    String
   role      MessageRole
   content   String
-  status    MessageStatus @default("COMPLETED")
+  status    MessageStatus @default(COMPLETED)
   createdAt DateTime      @default(now())
   chat      Chat          @relation(fields: [chatId], references: [id], onDelete: Cascade)
 
@@ -60,7 +60,7 @@ model Transaction {
   currency          String
   provider          TransactionProvider
   externalPaymentId String?
-  status            TransactionStatus   @default("PENDING")
+  status            TransactionStatus   @default(PENDING)
   metadata          Json?
   createdAt         DateTime            @default(now())
   chat              Chat?               @relation(fields: [chatId], references: [id])
@@ -83,7 +83,7 @@ model Trade {
   priceUsdEach  String
   walletAddress String
   txHash        String?
-  status        TradeStatus    @default("PENDING")
+  status        TradeStatus    @default(PENDING)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   chat          Chat?          @relation(fields: [chatId], references: [id])
