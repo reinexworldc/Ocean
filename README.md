@@ -8,7 +8,7 @@ Ocean is a crypto market intelligence and trading app where an AI agent pays for
 
 ## 🎬 Demo Video
 
-> 📹 *90-second walkthrough coming soon — [Loom / YouTube](#)*
+[![Ocean Demo](https://img.youtube.com/vi/RlmkxzkOsxM/maxresdefault.jpg)](https://youtu.be/RlmkxzkOsxM)
 
 ---
 
@@ -355,7 +355,7 @@ npm run simulate       # generates on-chain activity for demo
 
 ## Live Demo
 
-> 🌊 **[ocean.demo.link](#)** *(link coming soon)*
+> 🌊 **[useocean.site](https://useocean.site)**
 
 Connect with any EVM wallet on Arc Testnet. The app will automatically provision a Circle developer-controlled wallet, fund it with USDC, and let you start chatting with the agent — each response paid for, on-chain, in real time.
 
