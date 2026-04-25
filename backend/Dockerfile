@@ -2,11 +2,10 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
-COPY prisma ./prisma
-COPY prisma.config.ts ./prisma.config.ts
-RUN npm install
+RUN npm install --ignore-scripts
 
 COPY . .
+RUN DATABASE_URL="file:/tmp/build.db" npx prisma generate
 RUN npm run build
 
 FROM node:22-alpine
